@@ -12,18 +12,21 @@
 
   let recentProjects = ["project 1", "project 2"];
 
-  let openProjects: any[] = [
-    {
-      key: "C:\\Users\\Asus\\Documents\\tauri\\project-man",
-      name: "project-man",
-    },
-  ];
+  let openProjects: any[] = [];
 
   let currentProject = "";
 
   let projectLocation = "";
 
   let error: any[] = [];
+
+  $: {
+    if (openProjects.length > 0) {
+      currentProject = openProjects[0].key;
+    } else {
+      currentProject = "add";
+    }
+  }
 
   onMount(() => {
     listen("app-error", function (data: any) {
@@ -70,7 +73,7 @@
 <ErrorToast bind:message={error} />
 
 <main class="container flex flex-column">
-  <Tabs tabItems={openProjects} bind:currentTab={currentProject} />
+  <Tabs bind:tabItems={openProjects} bind:currentTab={currentProject} />
   <div style="height:calc(100% - 42px);">
     <div
       class="flex flex-row w-100 h-100"

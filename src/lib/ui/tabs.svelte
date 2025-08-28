@@ -2,12 +2,17 @@
   import Add from "$lib/icons/add.svelte";
   import Close from "$lib/icons/close.svelte";
 
-  export let tabItems;
+  export let tabItems: any[];
   export let currentTab: string;
   export let showCloseBth = true;
 
   function setItem(key: string) {
     currentTab = key;
+  }
+
+  function closeProject(e: any, key: string) {
+    e.preventDefault();
+    tabItems = tabItems.filter((value, index) => value.key !== key);
   }
 </script>
 
@@ -26,9 +31,9 @@
         {item.name}
       </div>
       {#if showCloseBth}
-        <div>
+        <button class="close-btn" on:click={(e) => closeProject(e, item.key)}>
           <Close />
-        </div>
+        </button>
       {/if}
     </div>
   {/each}
@@ -69,5 +74,15 @@
 
   .items:hover {
     background: var(--hover-color);
+  }
+
+  .close-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+  }
+
+  .close-btn:hover {
+    cursor: pointer;
   }
 </style>
