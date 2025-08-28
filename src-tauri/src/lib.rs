@@ -71,13 +71,18 @@ async fn send_message(
     history: Vec<ChatMessage>,
 ) -> String {
     let mut t_messages = vec![];
+    let mut t_history = history.clone();
+
     for message in messages {
-        t_messages.push(ChatMessage::user(message));
+        let chat_message = ChatMessage::user(message);
+        t_messages.push(chat_message.clone());
+        t_history.push(chat_message);
     }
-    let result = utils::l_ollama::send_message(model, t_messages, history).await;
+
+    app.emit("get-history", t_history.clone()).unwrap();
+    let result = utils::l_ollama::send_message(model, t_messages.clone(), history).await;
     match result {
-        Ok((data, history_response)) => {
-            let mut t_history = history_response;
+        Ok(data) => {
             t_history.push(data.message.clone());
             app.emit("get-history", t_history).unwrap();
             data.message.content

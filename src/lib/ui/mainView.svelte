@@ -12,7 +12,9 @@
 
   let llmResponse = "";
 
-  let history :any[]= [];
+  let history: any[] = [];
+
+  let userInput = "";
 
   $: {
     if (currentProject != "add" && currentProject != "") {
@@ -38,7 +40,7 @@
     });
   }
 
-  function sendMessage() {
+  function sendStartMessage() {
     let message = [];
     message.push(
       "Create commit message for the following file/files contains changes" +
@@ -50,6 +52,19 @@
       "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
     );
     console.log(currentProject);
+    invoke("send_message", {
+      model: selectedModel,
+      messages: message,
+      history: history,
+    }).then(function (data: any) {
+      llmResponse = data;
+    });
+  }
+
+  function sendMessage() {
+    let message = [];
+    message.push(userInput);
+    userInput = "";
     invoke("send_message", {
       model: selectedModel,
       messages: message,
@@ -78,17 +93,21 @@
       <ModelDropDown bind:selectedModel />
     </div>
     <div class="main-scrollbar chat-response">
-      {#if history.length>0}
-      {#each history as historyItem}
-        <pre class="text-wrap-wrap">{historyItem["content"]}</pre>
-      {/each}
-        
+      {#if history.length > 0}
+        {#each history as historyItem}
+          <pre class="text-wrap-wrap">{historyItem["content"]}</pre>
+        {/each}
       {/if}
-      
-      <pre class="text-wrap-wrap">{llmResponse}</pre>
     </div>
     <div class="chat-footer">
-      <button class="btn" on:click={(_) => sendMessage()}>send</button>
+      <div class="flex endpoint-input full-border">
+        {#if history.length > 0}
+          <input class="w-100 input" bind:value={userInput} />
+          <button class="btn" on:click={(_) => sendMessage()}>Send</button>
+        {:else}
+          <button class="btn w-100" on:click={(_) => sendStartMessage()}>Start</button>
+        {/if}
+      </div>
     </div>
   </div>
 </div>

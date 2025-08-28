@@ -23,14 +23,14 @@ pub(crate) async fn send_message(
     model: String,
     messages: Vec<ChatMessage>,
     history: Vec<ChatMessage>,
-) -> Result<(ChatMessageResponse, Vec<ChatMessage>), Box<dyn Error>> {
+) -> Result<ChatMessageResponse, Box<dyn Error>> {
     let ollama = Ollama::from_url(Url::parse("http://localhost:11434")?);
 
-    let mut coordinator = Coordinator::new(ollama, model.clone(), history)
+    let mut coordinator = Coordinator::new(ollama, model.clone(), history.clone())
         .add_tool(get_file)
         .add_tool(get_file_diff);
     let res: ChatMessageResponse = coordinator.chat(messages.to_owned()).await?;
-    Ok((res, messages))
+    Ok(res)
 }
 
 /// Get file contents from a file path.
