@@ -1,7 +1,11 @@
 <script lang="ts">
   import FolderOpen from "$lib/icons/folder_open.svelte";
+  import ErrorToast from "$lib/ui/errorToast.svelte";
+  import MainView from "$lib/ui/mainView.svelte";
+  import ModelDropDown from "$lib/ui/modelDropDown.svelte";
   import Tabs from "$lib/ui/tabs.svelte";
   import Titlebar from "$lib/ui/titlebar.svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
@@ -9,26 +13,29 @@
   let recentProjects = ["project 1", "project 2"];
 
   let openProjects: any[] = [
-    { key: "C:UsersAsusDocuments\tauriproject-man", name: "project-man" },
+    {
+      key: "C:\\Users\\Asus\\Documents\\tauri\\project-man",
+      name: "project-man",
+    },
   ];
 
   let currentProject = "";
 
   let projectLocation = "";
-  
-  $: error = [""];
-  
+
+  let error: any[] = [];
+
   onMount(() => {
+    listen("app-error", function (data: any) {
+      let message: string = data.payload;
+      error = [...error, message];
+    });
+
     if (openProjects.length > 0) {
       currentProject = openProjects[0].key;
     } else {
       currentProject = "add";
     }
-
-    listen("error", function (data: any) {
-      let message: string = data.payload;
-      error = [...error, message];
-    });
   });
 
   async function openFileSelector() {
@@ -42,7 +49,6 @@
   }
 
   function openProject() {
-    console.log(projectLocation);
     openProjects = [
       ...openProjects,
       {
@@ -60,6 +66,8 @@
 <div data-tauri-drag-region class="app-bar">
   <Titlebar />
 </div>
+
+<ErrorToast bind:message={error} />
 
 <main class="container flex flex-column">
   <Tabs tabItems={openProjects} bind:currentTab={currentProject} />
@@ -98,13 +106,7 @@
         </div>
       </div>
     {:else}
-      <div class="flex flex-row w-100 h-100">
-        <div class="w-50 h-100">
-          <div class="h-50 bottom-border">tl</div>
-          <div class="h-50">bl</div>
-        </div>
-        <div class="w-50 h-100 left-border">r</div>
-      </div>
+      <MainView bind:currentProject />
     {/if}
   </div>
 </main>

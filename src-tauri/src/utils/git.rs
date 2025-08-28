@@ -11,7 +11,16 @@ fn get_repo(location: String) -> Result<Repository, Box<dyn Error>> {
 }
 
 pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo = get_repo(location).expect("Opening repo error get_project_struture");
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
     let mut list_of_files = vec![];
 
     let rev = get_current_branch_name(&repo)?;
@@ -32,7 +41,15 @@ pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<
 }
 
 pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo = get_repo(location).expect("Opening repo error get_git_diff");
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
 
     let mut path_list = vec![];
     let mut diff_opts = DiffOptions::new();
@@ -55,7 +72,15 @@ pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn 
 }
 
 pub(crate) fn get_file_diff(location: String, path: String) -> Result<String, Box<dyn Error>> {
-    let repo = get_repo(location).expect("Opening repo error get_git_diff");
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
 
     let mut diff_opts = DiffOptions::new();
     diff_opts
