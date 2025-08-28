@@ -72,42 +72,48 @@
 <main class="container flex flex-column">
   <Tabs tabItems={openProjects} bind:currentTab={currentProject} />
   <div style="height:calc(100% - 42px);">
-    {#if currentProject == "add"}
-      <div class="flex flex-row w-100 h-100">
-        <div class="w-50 h-100 flex flex-justify-center flex-align-center">
-          <div class="flex flex-column">
-            <div>recent</div>
-            <div>
-              {#each recentProjects as recentProject}
-                <div>
-                  {recentProject}
-                </div>
-              {/each}
-            </div>
-          </div>
-        </div>
-        <div
-          class="w-50 h-100 left-border flex flex-justify-center flex-align-center"
-        >
-          <div class="w-100 flex flex-column new-session">
-            <div>New</div>
-            <div>
-              <div class="flex endpoint-input full-border">
-                <input class="w-100 input" bind:value={projectLocation} />
-                <button class="w-10 btn" on:click={(_) => openFileSelector()}>
-                  <FolderOpen />
-                </button>
+    <div
+      class="flex flex-row w-100 h-100"
+      class:hidden={currentProject !== "add"}
+    >
+      <div class="w-50 h-100 flex flex-justify-center flex-align-center">
+        <div class="flex flex-column">
+          <div>recent</div>
+          <div>
+            {#each recentProjects as recentProject}
+              <div>
+                {recentProject}
               </div>
-              <button class="w-100 btn" on:click={(_) => openProject()}
-                >Open</button
-              >
-            </div>
+            {/each}
           </div>
         </div>
       </div>
-    {:else}
-      <MainView bind:currentProject />
-    {/if}
+      <div
+        class="w-50 h-100 left-border flex flex-justify-center flex-align-center"
+      >
+        <div class="w-100 flex flex-column new-session">
+          <div>New</div>
+          <div>
+            <div class="flex endpoint-input full-border">
+              <input class="w-100 input" bind:value={projectLocation} />
+              <button class="w-10 btn" on:click={(_) => openFileSelector()}>
+                <FolderOpen />
+              </button>
+            </div>
+            <button class="w-100 btn" on:click={(_) => openProject()}
+              >Open</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="w-100 h-100" class:hidden={currentProject === "add"}>
+      {#each openProjects as project}
+        <div class="w-100 h-100" class:hidden={currentProject !== project.key}>
+          <MainView currentProject={project.key} />
+        </div>
+      {/each}
+    </div>
   </div>
 </main>
 

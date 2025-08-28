@@ -105,6 +105,10 @@
   border-left: 1px solid var(--border-color);
 }
 
-.text-wrap-wrap{
+.text-wrap-wrap {
   text-wrap: wrap;
+}
+
+.hidden {
+  display: none;
 }

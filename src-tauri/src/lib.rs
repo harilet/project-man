@@ -64,13 +64,24 @@ async fn get_all_local_models(app: AppHandle) -> Vec<String> {
 }
 
 #[tauri::command]
-async fn send_message(app: AppHandle, model: String, messages: Vec<String>) -> String {
+async fn send_message(
+    app: AppHandle,
+    model: String,
+    messages: Vec<String>,
+    history: Vec<ChatMessage>,
+) -> String {
     let mut t_messages = vec![];
     for message in messages {
         t_messages.push(ChatMessage::user(message));
     }
-    match utils::l_ollama::send_message(model, t_messages).await {
-        Ok(data) => data.message.content,
+    let result = utils::l_ollama::send_message(model, t_messages, history).await;
+    match result {
+        Ok((data, history_response)) => {
+            let mut t_history = history_response;
+            t_history.push(data.message.clone());
+            app.emit("get-history", t_history).unwrap();
+            data.message.content
+        }
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             "".to_string()

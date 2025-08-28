@@ -2,6 +2,7 @@
   export let currentProject: string;
   import { invoke } from "@tauri-apps/api/core";
   import ModelDropDown from "./modelDropDown.svelte";
+  import { listen } from "@tauri-apps/api/event";
 
   let stagedFiles: any[] = [];
 
@@ -11,6 +12,8 @@
 
   let llmResponse = "";
 
+  let history :any[]= [];
+
   $: {
     if (currentProject != "add" && currentProject != "") {
       invoke("get_staged_files", {
@@ -19,6 +22,11 @@
         stagedFiles = data;
       });
     }
+
+    listen("get-history", function (data: any) {
+      console.log(data);
+      history = data.payload;
+    });
   }
 
   function getChanges(file: string) {
@@ -45,6 +53,7 @@
     invoke("send_message", {
       model: selectedModel,
       messages: message,
+      history: history,
     }).then(function (data: any) {
       llmResponse = data;
     });
@@ -69,6 +78,13 @@
       <ModelDropDown bind:selectedModel />
     </div>
     <div class="main-scrollbar chat-response">
+      {#if history.length>0}
+      {#each history as historyItem}
+        <pre class="text-wrap-wrap">{historyItem["content"]}</pre>
+      {/each}
+        
+      {/if}
+      
       <pre class="text-wrap-wrap">{llmResponse}</pre>
     </div>
     <div class="chat-footer">

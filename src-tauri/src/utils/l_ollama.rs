@@ -1,9 +1,9 @@
 use ollama_rs::{
     coordinator::Coordinator,
-    generation::chat::{request::ChatMessageRequest, ChatMessage, ChatMessageResponse},
+    generation::chat::{ChatMessage, ChatMessageResponse},
     Ollama,
 };
-use std::{env, error::Error, fs, path::Path};
+use std::{error::Error, fs};
 use tauri::Url;
 
 use crate::utils::git;
@@ -22,19 +22,15 @@ pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>
 pub(crate) async fn send_message(
     model: String,
     messages: Vec<ChatMessage>,
-) -> Result<ChatMessageResponse, Box<dyn Error>> {
-    let mut history = vec![];
-
+    history: Vec<ChatMessage>,
+) -> Result<(ChatMessageResponse, Vec<ChatMessage>), Box<dyn Error>> {
     let ollama = Ollama::from_url(Url::parse("http://localhost:11434")?);
 
     let mut coordinator = Coordinator::new(ollama, model.clone(), history)
-
         .add_tool(get_file)
         .add_tool(get_file_diff);
-    let res = coordinator.chat(messages.to_owned(),)
-        .await?;
-
-    Ok(res)
+    let res: ChatMessageResponse = coordinator.chat(messages.to_owned()).await?;
+    Ok((res, messages))
 }
 
 /// Get file contents from a file path.
@@ -57,6 +53,6 @@ async fn get_file_diff(
     repo: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("get_file_diff: {repo}::{file_path}");
-    let file_contents = git::get_file_diff(repo,file_path).unwrap();
+    let file_contents = git::get_file_diff(repo, file_path).unwrap();
     Ok(file_contents)
 }
