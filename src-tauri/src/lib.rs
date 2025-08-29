@@ -14,6 +14,8 @@ pub fn run() {
             get_file_diff,
             get_all_local_models,
             send_message,
+            get_recent_projects,
+            set_projects,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -90,6 +92,39 @@ async fn send_message(
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_recent_projects(app: AppHandle) -> Vec<String> {
+    match utils::db::init_db().await {
+        Ok(_file_diff) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            return vec![];
+        }
+    }
+
+    match utils::db::get_recent_projects().await {
+        Ok(data) => {
+            return data;
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            return vec![];
+        }
+    }
+}
+
+#[tauri::command]
+async fn set_projects(app: AppHandle, name: String, path: String) {
+    println!("{name}:{path}");
+    match utils::db::set_projects(name, path).await {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
         }
     }
 }

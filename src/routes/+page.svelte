@@ -39,6 +39,10 @@
     } else {
       currentProject = "add";
     }
+
+    invoke("get_recent_projects").then((data) => {
+      recentProjects = data as string[];
+    });
   });
 
   async function openFileSelector() {
@@ -52,17 +56,24 @@
   }
 
   function openProject() {
+    let projectName =
+      projectLocation.split("\\")[projectLocation.split("\\").length - 1];
+    invoke("set_projects", { name: projectName, path: projectLocation });
+
     openProjects = [
       ...openProjects,
       {
-        name: projectLocation.split("\\")[
-          projectLocation.split("\\").length - 1
-        ],
+        name: projectName,
         key: projectLocation,
       },
     ];
     currentProject = projectLocation;
     projectLocation = "";
+  }
+
+  function openRecent(project: string) {
+    projectLocation = project;
+    openProject();
   }
 </script>
 
@@ -84,9 +95,12 @@
           <div>recent</div>
           <div>
             {#each recentProjects as recentProject}
-              <div>
+              <button
+                class="btn w-100"
+                on:click={(_) => openRecent(recentProject)}
+              >
                 {recentProject}
-              </div>
+              </button>
             {/each}
           </div>
         </div>

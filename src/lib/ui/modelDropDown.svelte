@@ -11,7 +11,6 @@
     isDropdownOpen = !isDropdownOpen;
     if (isDropdownOpen) {
       invoke("get_all_local_models").then(function (data: any) {
-        console.log(data);
         allModels = data;
       });
     }

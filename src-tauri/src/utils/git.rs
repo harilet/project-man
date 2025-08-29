@@ -1,5 +1,5 @@
 use git2::{DiffFormat, DiffOptions, Repository, TreeWalkMode};
-use std::{env, error::Error, path::Path};
+use std::{error::Error, path::Path};
 
 fn get_current_branch_name(repo: &Repository) -> Result<String, Box<dyn Error>> {
     let head = repo.head()?;
@@ -27,10 +27,8 @@ pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<
     let obj = repo.revparse_single(&rev)?;
     let tree = obj.peel_to_tree()?;
 
-    println!("{:#?}", env::current_dir());
     tree.walk(TreeWalkMode::PreOrder, |path, file| {
         let file = format!("{}{}", path, file.name().expect("File Name Empty"));
-        println!("{file}:{:#?}", !(Path::new(&file).is_dir()));
         if !(Path::new(&file).is_dir()) {
             list_of_files.push(file);
         }

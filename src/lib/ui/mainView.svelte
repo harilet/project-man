@@ -26,7 +26,6 @@
     }
 
     listen("get-history", function (data: any) {
-      console.log(data);
       history = data.payload;
     });
   }
@@ -43,7 +42,7 @@
   function sendStartMessage() {
     let message = [];
     message.push(
-      "Create commit message for the following file/files contains changes" +
+      "Create commit message for the following file/files which contains the changes " +
         stagedFiles.join(", ")
     );
     message.push("you can use the get_file_diff to get the changes of a file");
@@ -51,7 +50,7 @@
     message.push(
       "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
     );
-    console.log(currentProject);
+
     invoke("send_message", {
       model: selectedModel,
       messages: message,
