@@ -31,7 +31,7 @@
                 <div
                     class="toast-item"
                     in:fly={{ x: 200 }}
-                    out:fly={{ x: 200 }}
+                    out:fly={{ y: 200 }}
                 >
                     {item}
                 </div>
