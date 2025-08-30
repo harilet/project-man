@@ -44,9 +44,12 @@ async fn get_file(file_path: String) -> Result<String, Box<dyn std::error::Error
 }
 
 /// Get change diff of a file from a file path.
-///
+/// 
 /// * file_path - The file path to read from(relative path).
 /// * repo - The current repo we are using(absolute path).
+/// 
+/// Response is format is each line have the type of change called `change_type`, `from_no` is the original line number
+/// `to_no` is the new line number and `content` is the change made
 #[ollama_rs::function]
 async fn get_file_diff(
     file_path: String,
@@ -54,5 +57,7 @@ async fn get_file_diff(
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("get_file_diff: {repo}::{file_path}");
     let file_contents = git::get_file_diff(repo, file_path).unwrap();
-    Ok(file_contents)
+    println!("{}", file_contents.join("\n"));
+
+    Ok(file_contents.join("\n"))
 }

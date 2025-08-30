@@ -46,7 +46,9 @@ fn get_staged_files(app: AppHandle, location: String) -> Vec<String> {
 #[tauri::command]
 fn get_file_diff(app: AppHandle, location: String, file: String) -> String {
     match utils::git::get_file_diff(location, file) {
-        Ok(file_diff) => file_diff,
+        Ok(file_diff) => {
+            file_diff.join("\n")
+        },
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             "".to_string()

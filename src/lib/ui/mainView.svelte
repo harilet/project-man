@@ -27,7 +27,6 @@
 
     listen("get-history", function (data: any) {
       history = data.payload;
-      console.log(history);
     });
   }
 
@@ -73,6 +72,33 @@
       llmResponse = data;
     });
   }
+
+  function printFileChangeLine(line: string) {
+    if (line != "") {
+      let obj = JSON.parse(line);
+      if (obj["from_no"] == obj["to_no"]) {
+        return (
+          obj["change_type"] + ": " + obj["from_no"] + ": " + obj["content"]
+        );
+      } else if (obj["from_no"] == "") {
+        return obj["change_type"] + ": " + obj["to_no"] + ": " + obj["content"];
+      } else if (obj["to_no"] == "") {
+        return (
+          obj["change_type"] + ": " + obj["from_no"] + ": " + obj["content"]
+        );
+      } else {
+        return (
+          obj["change_type"] +
+          ": " +
+          obj["from_no"] +
+          "->" +
+          obj["to_no"] +
+          ": " +
+          obj["content"]
+        );
+      }
+    }
+  }
 </script>
 
 <div class="flex flex-row w-100 h-100">
@@ -111,7 +137,9 @@
   <div class="w-50 h-100">
     <div class="h-50 full-border main-scrollbar">
       {#each fileDiff.split("\n") as line}
-        <pre class="hover margin-0 text-wrap-wrap">{line}</pre>
+        <pre class="hover margin-0 text-wrap-wrap">{printFileChangeLine(
+            line
+          )}</pre>
       {/each}
     </div>
     <div class="h-50 main-scrollbar full-border">
