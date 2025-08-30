@@ -27,6 +27,7 @@
 
     listen("get-history", function (data: any) {
       history = data.payload;
+      console.log(history);
     });
   }
 
@@ -75,38 +76,53 @@
 </script>
 
 <div class="flex flex-row w-100 h-100">
-  <div class="w-50 h-100">
-    <div class="h-50 bottom-border main-scrollbar">
-      <pre>{fileDiff}</pre>
-    </div>
-    <div class="h-50 main-scrollbar">
-      {#each stagedFiles as file}
-        <button on:click={(_) => getChanges(file)} class="commit-file-path">
-          {file}
-        </button>
-      {/each}
-    </div>
-  </div>
-  <div class="w-50 h-100 left-border">
+  <div class="w-50 h-100 full-border">
     <div class="chat-header">
       <ModelDropDown bind:selectedModel />
     </div>
     <div class="main-scrollbar chat-response">
       {#if history.length > 0}
         {#each history as historyItem}
-          <pre class="text-wrap-wrap">{historyItem["content"]}</pre>
+          {#if historyItem["role"] === "user"}
+            <pre
+              class="text-wrap-wrap hover w-90 full-border"
+              style="margin-left: auto;">{historyItem["content"]}</pre>
+          {:else}
+            <pre class="text-wrap-wrap hover w-90 full-border">{historyItem[
+                "content"
+              ]}</pre>
+          {/if}
         {/each}
       {/if}
     </div>
     <div class="chat-footer">
-      <div class="flex endpoint-input full-border">
+      <div class="flex endpoint-input full-border h-100">
         {#if history.length > 0}
           <input class="w-100 input" bind:value={userInput} />
           <button class="btn" on:click={(_) => sendMessage()}>Send</button>
         {:else}
-          <button class="btn w-100" on:click={(_) => sendStartMessage()}>Start</button>
+          <button class="btn w-100" on:click={(_) => sendStartMessage()}
+            >Start</button
+          >
         {/if}
       </div>
+    </div>
+  </div>
+  <div class="w-50 h-100">
+    <div class="h-50 full-border main-scrollbar">
+      {#each fileDiff.split("\n") as line}
+        <pre class="hover margin-0 text-wrap-wrap">{line}</pre>
+      {/each}
+    </div>
+    <div class="h-50 main-scrollbar full-border">
+      {#each stagedFiles as file}
+        <button
+          on:click={(_) => getChanges(file)}
+          class="commit-file-path hover"
+        >
+          {file}
+        </button>
+      {/each}
     </div>
   </div>
 </div>
@@ -124,10 +140,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  .commit-file-path:hover {
-    background: var(--hover-color);
   }
 
   .chat-header {

@@ -85,7 +85,7 @@
 
 <main class="container flex flex-column">
   <Tabs bind:tabItems={openProjects} bind:currentTab={currentProject} />
-  <div style="height:calc(100% - 42px);">
+  <div style="height:calc(100% - 44px);">
     <div
       class="flex flex-row w-100 h-100"
       class:hidden={currentProject !== "add"}
