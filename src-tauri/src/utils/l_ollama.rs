@@ -48,8 +48,11 @@ async fn get_file(file_path: String) -> Result<String, Box<dyn std::error::Error
 /// * file_path - The file path to read from(relative path).
 /// * repo - The current repo we are using(absolute path).
 /// 
-/// Response is format is each line have the type of change called `change_type`, `from_no` is the original line number
-/// `to_no` is the new line number and `content` is the change made
+/// Response format is each line is a json string key and values and have the following keys
+/// `change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk", 
+/// `from_no` is the original line number,
+/// `to_no` is the new line number and
+/// `content` is the changes made
 #[ollama_rs::function]
 async fn get_file_diff(
     file_path: String,
