@@ -13,6 +13,13 @@
   function closeProject(e: any, key: string) {
     e.preventDefault();
     tabItems = tabItems.filter((value, index) => value.key !== key);
+    setTimeout(() => {
+      if (tabItems.length > 0) {
+        setItem(tabItems[tabItems.length - 1].key);
+      } else {
+        setItem("add");
+      }
+    }, 0);
   }
 </script>
 

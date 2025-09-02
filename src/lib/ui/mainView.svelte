@@ -51,6 +51,11 @@
       "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
     );
 
+    if (userInput != "") {
+      message.push(userInput);
+      userInput = "";
+    }
+
     invoke("send_message", {
       model: selectedModel,
       messages: message,
@@ -61,16 +66,18 @@
   }
 
   function sendMessage() {
-    let message = [];
-    message.push(userInput);
-    userInput = "";
-    invoke("send_message", {
-      model: selectedModel,
-      messages: message,
-      history: history,
-    }).then(function (data: any) {
-      llmResponse = data;
-    });
+    if (userInput != "") {
+      let message = [];
+      message.push(userInput);
+      userInput = "";
+      invoke("send_message", {
+        model: selectedModel,
+        messages: message,
+        history: history,
+      }).then(function (data: any) {
+        llmResponse = data;
+      });
+    }
   }
 
   function printFileChangeLine(line: string) {
@@ -124,9 +131,18 @@
     <div class="chat-footer">
       <div class="flex endpoint-input full-border h-100">
         {#if history.length > 0}
-          <input class="w-100 input" bind:value={userInput} />
+          <input
+            on:change={(_) => sendMessage()}
+            class="w-100 input"
+            bind:value={userInput}
+          />
           <button class="btn" on:click={(_) => sendMessage()}>Send</button>
         {:else}
+          <input
+            on:change={(_) => sendStartMessage()}
+            class="w-100 input"
+            bind:value={userInput}
+          />
           <button class="btn w-100" on:click={(_) => sendStartMessage()}
             >Start</button
           >

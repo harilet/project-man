@@ -22,7 +22,7 @@
 
   $: {
     if (openProjects.length > 0) {
-      currentProject = openProjects[0].key;
+      currentProject = openProjects[openProjects.length - 1].key;
     } else {
       currentProject = "add";
     }
@@ -35,13 +35,13 @@
     });
 
     if (openProjects.length > 0) {
-      currentProject = openProjects[0].key;
+      currentProject = openProjects[openProjects.length - 1].key;
     } else {
       currentProject = "add";
     }
 
     invoke("get_recent_projects").then((data) => {
-      recentProjects = data as string[];
+      recentProjects = (data as string[]).reverse();
     });
   });
 
