@@ -1,3 +1,5 @@
+use std::{net::TcpStream, thread, time::Duration};
+
 use ollama_rs::generation::chat::ChatMessage;
 use tauri::{AppHandle, Emitter};
 
@@ -16,6 +18,7 @@ pub fn run() {
             send_message,
             get_recent_projects,
             set_projects,
+            start_ollama_server_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -46,9 +49,7 @@ fn get_staged_files(app: AppHandle, location: String) -> Vec<String> {
 #[tauri::command]
 fn get_file_diff(app: AppHandle, location: String, file: String) -> String {
     match utils::git::get_file_diff(location, file) {
-        Ok(file_diff) => {
-            file_diff.join("\n")
-        },
+        Ok(file_diff) => file_diff.join("\n"),
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             "".to_string()
@@ -129,4 +130,21 @@ async fn set_projects(app: AppHandle, name: String, path: String) {
             println!("{:#?}", e);
         }
     }
+}
+
+#[tauri::command]
+async fn start_ollama_server_check(app: AppHandle) {
+    thread::spawn(move || {
+        loop {
+            match TcpStream::connect("localhost:11434") {
+                Ok(_) => {
+                    app.emit("ollama-server-status", "live").unwrap();
+                },
+                Err(_) => {
+                    app.emit("ollama-server-status", "offline").unwrap();
+                },
+            }
+            thread::sleep(Duration::from_secs(10));
+        }
+    });
 }

@@ -68,8 +68,9 @@
 
 .btn {
   border: 1px solid var(--border-color);
-  background: #8585853b;
+  background: transparent;
   color: var(--text-color);
+  padding: 5px;
 }
 
 .btn:hover {

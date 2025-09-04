@@ -109,7 +109,7 @@
 </script>
 
 <div class="flex flex-row w-100 h-100">
-  <div class="w-50 h-100 full-border">
+  <div class="w-50 h-100">
     <div class="chat-header">
       <ModelDropDown bind:selectedModel />
     </div>
@@ -118,10 +118,11 @@
         {#each history as historyItem}
           {#if historyItem["role"] === "user"}
             <pre
-              class="text-wrap-wrap hover w-90 full-border"
+              class="text-wrap-wrap hover w-90 full-border chat-item"
               style="margin-left: auto;">{historyItem["content"]}</pre>
           {:else}
-            <pre class="text-wrap-wrap hover w-90 full-border">{historyItem[
+            <pre
+              class="text-wrap-wrap hover w-90 full-border chat-item">{historyItem[
                 "content"
               ]}</pre>
           {/if}
@@ -129,7 +130,7 @@
       {/if}
     </div>
     <div class="chat-footer">
-      <div class="flex endpoint-input full-border h-100">
+      <div class="flex endpoint-input top-border h-100">
         {#if history.length > 0}
           <input
             on:change={(_) => sendMessage()}
@@ -143,22 +144,24 @@
             class="w-100 input"
             bind:value={userInput}
           />
-          <button class="btn w-100" on:click={(_) => sendStartMessage()}
-            >Start</button
+          <button
+            class="btn w-100"
+            style="border-top: none;border-right: none;"
+            on:click={(_) => sendStartMessage()}>Start</button
           >
         {/if}
       </div>
     </div>
   </div>
   <div class="w-50 h-100">
-    <div class="h-50 full-border main-scrollbar">
+    <div class="h-50 left-border bottom-border main-scrollbar">
       {#each fileDiff.split("\n") as line}
         <pre class="hover margin-0 text-wrap-wrap">{printFileChangeLine(
             line
           )}</pre>
       {/each}
     </div>
-    <div class="h-50 main-scrollbar full-border">
+    <div class="h-50 main-scrollbar left-border">
       {#each stagedFiles as file}
         <button
           on:click={(_) => getChanges(file)}
@@ -196,5 +199,10 @@
 
   .chat-footer {
     height: 37px;
+  }
+
+  .chat-item {
+    padding: 4px;
+    border-radius: 2px;
   }
 </style>
