@@ -1,5 +1,5 @@
 use libsql::{params, Builder, Connection};
-use std::{env, error::Error, path::PathBuf};
+use std::{env, error::Error, path::PathBuf, time::SystemTime};
 
 pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     let db = get_db().await?;
@@ -8,7 +8,8 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
             "CREATE TABLE 'all_projects' (
                 'id'	INTEGER NOT NULL UNIQUE,
                 'name'	TEXT NOT NULL,
-                'path'	INTEGER NOT NULL UNIQUE,
+                'path'	TEXT NOT NULL UNIQUE,
+                'last_access'	INTEGER NOT NULL DEFAULT 1757003813,
                 PRIMARY KEY('id' AUTOINCREMENT)
             );",
             (),
@@ -19,9 +20,10 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     if !(dose_table_exists("open_projects".to_string()).await?) {
         db.execute(
             "CREATE TABLE 'open_projects' (
-	'project_id'	INTEGER NOT NULL UNIQUE,
-	CONSTRAINT 'open_project_foreign_id' FOREIGN KEY('project_id') REFERENCES 'all_projects'('id')
-);",
+                'project_id'	INTEGER NOT NULL UNIQUE,
+                'last_access'	INTEGER NOT NULL DEFAULT 1757003813,
+                CONSTRAINT 'open_project_foreign_id' FOREIGN KEY('project_id') REFERENCES 'all_projects'('id')
+            );",
             (),
         )
         .await?;
@@ -34,7 +36,10 @@ pub(crate) async fn get_recent_projects() -> Result<Vec<String>, Box<dyn Error>>
     let db = get_db().await?;
     let mut result_data = vec![];
     let mut result = db
-        .query("SELECT id, name, path FROM all_projects", ())
+        .query(
+            "SELECT id, name, path FROM all_projects ORDER BY last_access",
+            (),
+        )
         .await?;
 
     while let Some(data) = result.next().await? {
@@ -52,11 +57,18 @@ pub(crate) async fn set_projects(name: String, path: String) -> Result<i64, Box<
         )
         .await?;
     if let Some(data) = dose_project_exists_row.next().await? {
+        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+        db.query(
+            "UPDATE all_projects SET last_access=?1 WHERE path=?2",
+            [now.as_secs().to_string(), path.clone()],
+        )
+        .await?;
         return Ok(data.get(0)?);
     } else {
+        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         db.query(
-            "INSERT INTO all_projects (name, path) VALUES (?1,?2)",
-            params![name, path.clone()],
+            "INSERT INTO all_projects (name, path, last_access) VALUES (?1,?2,?3)",
+            params![name, path.clone(), now.as_secs()],
         )
         .await?;
         let mut dose_project_exists_row = db
@@ -67,7 +79,7 @@ pub(crate) async fn set_projects(name: String, path: String) -> Result<i64, Box<
             .await?;
         if let Some(data) = dose_project_exists_row.next().await? {
             return Ok(data.get(0)?);
-        }else{
+        } else {
             panic!("Can't get created project")
         }
     }

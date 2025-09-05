@@ -1,4 +1,4 @@
-use std::{net::TcpStream, thread, time::Duration};
+use std::{net::{Shutdown, TcpStream}, thread, time::Duration};
 
 use ollama_rs::generation::chat::ChatMessage;
 use tauri::{AppHandle, Emitter};
@@ -137,8 +137,9 @@ async fn start_ollama_server_check(app: AppHandle) {
     thread::spawn(move || {
         loop {
             match TcpStream::connect("localhost:11434") {
-                Ok(_) => {
+                Ok(connection) => {
                     app.emit("ollama-server-status", "live").unwrap();
+                    connection.shutdown(Shutdown::Both).unwrap();
                 },
                 Err(_) => {
                     app.emit("ollama-server-status", "offline").unwrap();
