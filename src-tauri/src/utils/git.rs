@@ -9,7 +9,17 @@ struct ChangeLine {
     change_type: String,
 }
 
-fn get_current_branch_name(repo: &Repository) -> Result<String, Box<dyn Error>> {
+pub(crate) fn get_current_branch_name(location: String) -> Result<String, Box<dyn Error>> {
+        let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
     let head = repo.head()?;
     Ok(head.shorthand().expect("Empty Branch Name").to_string())
 }
@@ -20,7 +30,7 @@ fn get_repo(location: String) -> Result<Repository, Box<dyn Error>> {
 
 pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<dyn Error>> {
     let repo: Repository;
-    match get_repo(location) {
+    match get_repo(location.clone()) {
         Ok(t_repo) => {
             repo = t_repo;
         }
@@ -31,7 +41,7 @@ pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<
 
     let mut list_of_files = vec![];
 
-    let rev = get_current_branch_name(&repo)?;
+    let rev = get_current_branch_name(location)?;
     let obj = repo.revparse_single(&rev)?;
     let tree = obj.peel_to_tree()?;
 

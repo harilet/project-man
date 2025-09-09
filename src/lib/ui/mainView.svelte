@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import ModelDropDown from "./modelDropDown.svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { onMount } from "svelte";
 
   let stagedFiles: any[] = [];
 
@@ -15,6 +16,8 @@
   let history: any[] = [];
 
   let userInput = "";
+
+  let branchName = "";
 
   $: {
     if (currentProject != "add" && currentProject != "") {
@@ -29,6 +32,14 @@
       history = data.payload;
     });
   }
+
+  onMount(() => {
+    invoke("get_current_branch_name", {
+      location: currentProject,
+    }).then(function (data: any) {
+      branchName = data;
+    });
+  });
 
   function getChanges(file: string) {
     invoke("get_file_diff", {
@@ -51,10 +62,15 @@
       "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
     );
 
+    message.push("The current branch name is " + branchName);
+
+    console.log("userInput: " + userInput);
+
     if (userInput != "") {
       message.push(userInput);
       userInput = "";
     }
+    console.log("message: " + message);
 
     invoke("send_message", {
       model: selectedModel,
@@ -132,23 +148,19 @@
     <div class="chat-footer">
       <div class="flex endpoint-input top-border h-100">
         {#if history.length > 0}
-          <input
-            on:change={(_) => sendMessage()}
-            class="w-100 input"
-            bind:value={userInput}
-          />
-          <button class="btn" on:click={(_) => sendMessage()}>Send</button>
+          <form class="w-100 flex">
+            <input class="w-100 input" bind:value={userInput} />
+            <button class="btn" on:click={(_) => sendMessage()}>Send</button>
+          </form>
         {:else}
-          <input
-            on:change={(_) => sendStartMessage()}
-            class="w-100 input"
-            bind:value={userInput}
-          />
-          <button
-            class="btn w-100"
-            style="border-top: none;border-right: none;"
-            on:click={(_) => sendStartMessage()}>Start</button
-          >
+          <form class="w-100 flex">
+            <input class="w-100 input" bind:value={userInput} />
+            <button
+              class="btn w-100"
+              style="border-top: none;border-right: none;"
+              on:click={(_) => sendStartMessage()}>Start</button
+            >
+          </form>
         {/if}
       </div>
     </div>

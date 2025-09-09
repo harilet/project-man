@@ -1,4 +1,8 @@
-use std::{net::{Shutdown, TcpStream}, thread, time::Duration};
+use std::{
+    net::{Shutdown, TcpStream},
+    thread,
+    time::Duration,
+};
 
 use ollama_rs::generation::chat::ChatMessage;
 use tauri::{AppHandle, Emitter};
@@ -19,10 +23,12 @@ pub fn run() {
             get_recent_projects,
             set_projects,
             start_ollama_server_check,
+            get_current_branch_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
 #[tauri::command]
 fn get_project_struture(app: AppHandle, location: String) -> Vec<String> {
     match utils::git::get_project_struture(location) {
@@ -134,18 +140,28 @@ async fn set_projects(app: AppHandle, name: String, path: String) {
 
 #[tauri::command]
 async fn start_ollama_server_check(app: AppHandle) {
-    thread::spawn(move || {
-        loop {
-            match TcpStream::connect("localhost:11434") {
-                Ok(connection) => {
-                    app.emit("ollama-server-status", "live").unwrap();
-                    connection.shutdown(Shutdown::Both).unwrap();
-                },
-                Err(_) => {
-                    app.emit("ollama-server-status", "offline").unwrap();
-                },
+    thread::spawn(move || loop {
+        match TcpStream::connect("localhost:11434") {
+            Ok(connection) => {
+                app.emit("ollama-server-status", "live").unwrap();
+                connection.shutdown(Shutdown::Both).unwrap();
             }
-            thread::sleep(Duration::from_secs(10));
+            Err(_) => {
+                app.emit("ollama-server-status", "offline").unwrap();
+            }
         }
+        thread::sleep(Duration::from_secs(10));
     });
+}
+
+#[tauri::command]
+async fn get_current_branch_name(app: AppHandle, location: String) -> String {
+    match utils::git::get_current_branch_name(location) {
+        Ok(branch) => branch,
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            "".to_string()
+        }
+    }
 }
