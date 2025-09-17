@@ -19,6 +19,8 @@
 
   let branchName = "";
 
+  let llmSettingDialog: HTMLDialogElement;
+
   $: {
     if (currentProject != "add" && currentProject != "") {
       invoke("get_staged_files", {
@@ -38,6 +40,18 @@
       location: currentProject,
     }).then(function (data: any) {
       branchName = data;
+    });
+
+    llmSettingDialog.addEventListener("click", function (event) {
+      var rect = llmSettingDialog.getBoundingClientRect();
+      var isInDialog =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+      if (!isInDialog) {
+        llmSettingDialog.close();
+      }
     });
   });
 
@@ -122,12 +136,48 @@
       }
     }
   }
+
+  function openDialog() {
+    if (llmSettingDialog.open) {
+      llmSettingDialog.close();
+    } else {
+      llmSettingDialog.showModal();
+    }
+  }
 </script>
+
+<dialog bind:this={llmSettingDialog} on:close>
+  <div class="h-100 flex flex-column">
+    <div class="text-color" style="margin-bottom: 25px;">LLM Settings</div>
+    <div style="margin-bottom: 25px;">
+      <div class="text-color">Model</div>
+      <div>
+        <ModelDropDown bind:selectedModel />
+      </div>
+    </div>
+
+    <div style="margin-bottom: 25px;">
+      <div class="text-color">Server Url</div>
+
+      <input
+        class="w-100 input full-border"
+        style="padding: 5px;"
+        bind:value={userInput}
+      />
+    </div>
+  </div>
+</dialog>
 
 <div class="flex flex-row w-100 h-100">
   <div class="w-50 h-100">
     <div class="chat-header">
-      <ModelDropDown bind:selectedModel />
+      <button class="btn" on:click={(_) => openDialog()}>
+        {#if selectedModel == ""}
+          LLM Settings
+        {:else}
+          {selectedModel}
+        {/if}
+      </button>
     </div>
     <div class="main-scrollbar chat-response">
       {#if history.length > 0}

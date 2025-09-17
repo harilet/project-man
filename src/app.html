@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -9,10 +9,10 @@
     <style>
       :root {
         --text-color: #ffffff;
-    --hover-color: #ffffff10;
-    --primary-color: #00d3f3;
-    --background-color: #000000;
-    --border-color: #262626;
+        --hover-color: #ffffff10;
+        --primary-color: #00d3f3;
+        --background-color: #000000;
+        --border-color: #262626;
       }
       body {
         background-color: var(--background-color);
@@ -28,6 +28,23 @@
         font-weight: 400;
         font-style: normal;
         font-size: small;
+      }
+
+      dialog {
+        border-radius: 5px;
+        border-width: 1px;
+        transition: all 2s;
+        width: 50%;
+        z-index: 2;
+        height: 75%;
+        padding: 20px;
+        background: var(--background-color);
+        border: 1px solid var(--border-color);
+      }
+
+      dialog::backdrop {
+        background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7));
+        animation: fade-in 1s;
       }
     </style>
   </head>

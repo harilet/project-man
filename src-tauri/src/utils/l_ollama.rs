@@ -8,12 +8,31 @@ use tauri::Url;
 
 use crate::utils::git;
 
+#[derive(Clone, serde::Serialize, Debug)]
+struct ModelData {
+    name: String,
+    architecture: String,
+    context: String,
+    capabilities: Vec<String>,
+}
+
 pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>> {
     let ollama = Ollama::from_url(Url::parse("http://localhost:11434")?);
     let res = ollama.list_local_models().await?;
-    let mut local_models = vec![];
+    let mut local_models: Vec<String> = vec![];
     for local_model in res {
-        local_models.push(local_model.name);
+        let model_info = ollama.show_model_info(local_model.name.clone()).await?;
+        let architecture = match model_info.model_info.get("general.architecture") {
+            Some(architecture) => architecture.to_string(),
+            None => "".to_string(),
+        };
+        let model_data=ModelData {
+            name: local_model.name,
+            architecture: architecture,
+            context: "12k".to_string(),
+            capabilities: model_info.capabilities,
+        };
+        local_models.push(serde_json::to_string(&model_data)?);
     }
 
     Ok(local_models)
@@ -44,12 +63,12 @@ async fn get_file(file_path: String) -> Result<String, Box<dyn std::error::Error
 }
 
 /// Get change diff of a file from a file path.
-/// 
+///
 /// * file_path - The file path to read from(relative path).
 /// * repo - The current repo we are using(absolute path).
-/// 
+///
 /// Response format is each line is a json string key and values and have the following keys
-/// `change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk", 
+/// `change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk",
 /// `from_no` is the original line number,
 /// `to_no` is the new line number and
 /// `content` is the changes made

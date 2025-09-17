@@ -125,3 +125,7 @@
 .hover:hover {
   background: var(--hover-color) !important;
 }
+
+.text-color{
+  color: var(--text-color);
+}
