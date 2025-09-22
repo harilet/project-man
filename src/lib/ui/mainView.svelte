@@ -4,6 +4,7 @@
   import ModelDropDown from "./modelDropDown.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import LlmSetting from "./llmSetting.svelte";
 
   let stagedFiles: any[] = [];
 
@@ -147,25 +148,7 @@
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
-  <div class="h-100 flex flex-column">
-    <div class="text-color" style="margin-bottom: 25px;">LLM Settings</div>
-    <div style="margin-bottom: 25px;">
-      <div class="text-color">Model</div>
-      <div>
-        <ModelDropDown bind:selectedModel />
-      </div>
-    </div>
-
-    <div style="margin-bottom: 25px;">
-      <div class="text-color">Server Url</div>
-
-      <input
-        class="w-100 input full-border"
-        style="padding: 5px;"
-        bind:value={userInput}
-      />
-    </div>
-  </div>
+  <LlmSetting bind:selectedModel={selectedModel}/>
 </dialog>
 
 <div class="flex flex-row w-100 h-100">

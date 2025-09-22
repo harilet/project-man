@@ -6,7 +6,7 @@ use ollama_rs::{
 use std::{error::Error, fs};
 use tauri::Url;
 
-use crate::utils::git;
+use crate::utils::{db, git};
 
 #[derive(Clone, serde::Serialize, Debug)]
 struct ModelData {
@@ -17,7 +17,11 @@ struct ModelData {
 }
 
 pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>> {
-    let ollama = Ollama::from_url(Url::parse("http://localhost:11434")?);
+    let ollama_server = match db::get_ollama_setting().await?.get("ollama_server") {
+        Some(da) => da.clone(),
+        None => "".to_string(),
+    };
+    let ollama = Ollama::from_url(Url::parse(&ollama_server)?);
     let res = ollama.list_local_models().await?;
     let mut local_models: Vec<String> = vec![];
     for local_model in res {
@@ -26,7 +30,7 @@ pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>
             Some(architecture) => architecture.to_string(),
             None => "".to_string(),
         };
-        let model_data=ModelData {
+        let model_data = ModelData {
             name: local_model.name,
             architecture: architecture,
             context: "12k".to_string(),
@@ -43,7 +47,11 @@ pub(crate) async fn send_message(
     messages: Vec<ChatMessage>,
     history: Vec<ChatMessage>,
 ) -> Result<ChatMessageResponse, Box<dyn Error>> {
-    let ollama = Ollama::from_url(Url::parse("http://localhost:11434")?);
+    let ollama_server = match db::get_ollama_setting().await?.get("ollama_server") {
+        Some(da) => da.clone(),
+        None => "".to_string(),
+    };
+    let ollama = Ollama::from_url(Url::parse(&ollama_server)?);
 
     let mut coordinator = Coordinator::new(ollama, model.clone(), history.clone())
         .add_tool(get_file)

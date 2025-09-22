@@ -1,5 +1,5 @@
 use libsql::{params, Builder, Connection};
-use std::{env, error::Error, path::PathBuf, time::SystemTime};
+use std::{collections::HashMap, env, error::Error, path::PathBuf, time::SystemTime};
 
 pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     let db = get_db().await?;
@@ -23,6 +23,17 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
                 'project_id'	INTEGER NOT NULL UNIQUE,
                 'last_access'	INTEGER NOT NULL DEFAULT 1757003813,
                 CONSTRAINT 'open_project_foreign_id' FOREIGN KEY('project_id') REFERENCES 'all_projects'('id')
+            );",
+            (),
+        )
+        .await?;
+    }
+
+    if !(dose_table_exists("ollama_setting".to_string()).await?) {
+        db.execute(
+            "CREATE TABLE 'ollama_setting' (
+                'name'	TEXT NOT NULL UNIQUE,
+                'value'	TEXT
             );",
             (),
         )
@@ -83,6 +94,51 @@ pub(crate) async fn set_projects(name: String, path: String) -> Result<i64, Box<
             panic!("Can't get created project")
         }
     }
+}
+
+pub(crate) async fn get_ollama_setting() -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let db = get_db().await?;
+    let mut result = db.query("SELECT * FROM ollama_setting;", ()).await?;
+    let mut result_data = HashMap::new();
+    while let Some(data) = result.next().await? {
+        let setting_name = match data.get_value(0)?.as_text() {
+            Some(e) => e.clone(),
+            None => "".to_string(),
+        };
+        let setting_value = match data.get_value(1)?.as_text() {
+            Some(e) => e.clone(),
+            None => "".to_string(),
+        };
+        result_data.insert(setting_name, setting_value);
+    }
+    Ok(result_data)
+}
+
+pub(crate) async fn set_ollama_setting(
+    setting_name: String,
+    setting_value: String,
+) -> Result<(), Box<dyn Error>> {
+    let db = get_db().await?;
+    let mut data_exists_result = db
+        .query(
+            "SELECT * FROM ollama_setting WHERE name=?1;",
+            [setting_name.clone()],
+        )
+        .await?;
+    if let Some(_data) = data_exists_result.next().await? {
+        db.query(
+            "UPDATE ollama_setting SET value=?1 WHERE name=?2;",
+            [setting_value.clone(), setting_name.clone()],
+        )
+        .await?;
+    } else {
+        db.query(
+            "INSERT INTO ollama_setting (name,value) VALUES (?1, ?2);",
+            [setting_name.clone(), setting_value.clone()],
+        )
+        .await?;
+    }
+    Ok(())
 }
 
 async fn get_db() -> Result<Connection, Box<dyn Error>> {

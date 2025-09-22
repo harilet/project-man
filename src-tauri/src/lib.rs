@@ -24,6 +24,8 @@ pub fn run() {
             set_projects,
             start_ollama_server_check,
             get_current_branch_name,
+            set_ollama_setting,
+            get_ollama_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -162,6 +164,36 @@ async fn get_current_branch_name(app: AppHandle, location: String) -> String {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
             "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_ollama_setting(app: AppHandle) -> String {
+    match utils::db::get_ollama_setting().await {
+        Ok(data) => match serde_json::to_string(&data) {
+            Ok(json_data) => json_data,
+            Err(e) => {
+                app.emit("app-error", e.to_string()).unwrap();
+                println!("{:#?}", e);
+                "{}".to_string()
+            }
+        },
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            "{}".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+async fn set_ollama_setting(app: AppHandle, name: String, value: String) {
+    match utils::db::set_ollama_setting(name, value).await {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
         }
     }
 }
