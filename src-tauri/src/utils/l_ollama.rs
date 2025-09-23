@@ -4,9 +4,12 @@ use ollama_rs::{
     Ollama,
 };
 use std::{error::Error, fs};
-use tauri::Url;
+use tauri::{Emitter, Url};
 
-use crate::utils::{db, git};
+use crate::{
+    utils::{db, git},
+    APP_HANDLE,
+};
 
 #[derive(Clone, serde::Serialize, Debug)]
 struct ModelData {
@@ -14,6 +17,13 @@ struct ModelData {
     architecture: String,
     context: String,
     capabilities: Vec<String>,
+}
+
+#[derive(Clone, serde::Serialize, Debug)]
+struct LlmToolCall {
+    tool_name: String,
+    tool_input: String,
+    tool_output: String,
 }
 
 pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>> {
@@ -67,6 +77,16 @@ pub(crate) async fn send_message(
 async fn get_file(file_path: String) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("get_file: {file_path}");
     let file_contents = fs::read_to_string(&file_path)?;
+    let app = APP_HANDLE.get().unwrap();
+    app.emit(
+        "tool-call",
+        LlmToolCall {
+            tool_name: "get_file".to_string(),
+            tool_input: file_path,
+            tool_output: file_contents.clone(),
+        },
+    )
+    .unwrap();
     Ok(file_contents)
 }
 
@@ -86,8 +106,19 @@ async fn get_file_diff(
     repo: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("get_file_diff: {repo}::{file_path}");
-    let file_contents = git::get_file_diff(repo, file_path).unwrap();
-    println!("{}", file_contents.join("\n"));
+    let file_contents = git::get_file_diff(repo.clone(), file_path.clone()).unwrap();
+    let contents = file_contents.join("\n");
+    println!("{}", contents);
+    let app = APP_HANDLE.get().unwrap();
+    app.emit(
+        "tool-call",
+        LlmToolCall {
+            tool_name: "get_file_diff".to_string(),
+            tool_input: format!("{repo}/{file_path}"),
+            tool_output: contents.clone(),
+        },
+    )
+    .unwrap();
 
-    Ok(file_contents.join("\n"))
+    Ok(contents)
 }

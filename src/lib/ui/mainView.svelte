@@ -5,6 +5,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import LlmSetting from "./llmSetting.svelte";
+  import ChatItem from "./chatItem.svelte";
 
   let stagedFiles: any[] = [];
 
@@ -15,6 +16,8 @@
   let llmResponse = "";
 
   let history: any[] = [];
+
+  let chat: any[] = [];
 
   let userInput = "";
 
@@ -30,10 +33,6 @@
         stagedFiles = data;
       });
     }
-
-    listen("get-history", function (data: any) {
-      history = data.payload;
-    });
   }
 
   onMount(() => {
@@ -54,6 +53,17 @@
         llmSettingDialog.close();
       }
     });
+
+    listen("get-history", function (data: any) {
+      history = data.payload;
+      console.log(history);
+    });
+
+    listen("tool-call", function (data: any) {
+      let message: string = data.payload;
+      chat = [...chat, { role: "tool", content: message }];
+      console.log(message);
+    });
   });
 
   function getChanges(file: string) {
@@ -72,20 +82,27 @@
         stagedFiles.join(", ")
     );
     message.push("you can use the get_file_diff to get the changes of a file");
-    message.push("The current repo you are using is " + currentProject);
+    message.push(
+      "The current repo you are using is " +
+        currentProject.replaceAll("\\", "/")
+    );
     message.push(
       "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
     );
 
     message.push("The current branch name is " + branchName);
 
-    console.log("userInput: " + userInput);
-
     if (userInput != "") {
       message.push(userInput);
       userInput = "";
     }
-    console.log("message: " + message);
+
+    let chat_history = message.map(function (value) {
+      return { role: "user", content: value };
+    });
+
+    chat = [...chat, ...chat_history];
+    console.log(chat);
 
     invoke("send_message", {
       model: selectedModel,
@@ -93,6 +110,7 @@
       history: history,
     }).then(function (data: any) {
       llmResponse = data;
+      chat = [...chat, { role: "assistant", content: data }];
     });
   }
 
@@ -101,12 +119,19 @@
       let message = [];
       message.push(userInput);
       userInput = "";
+      let chat_history = message.map(function (value) {
+        return { role: "user", content: value };
+      });
+
+      chat = [...chat, ...chat_history];
+      console.log(chat);
       invoke("send_message", {
         model: selectedModel,
         messages: message,
         history: history,
       }).then(function (data: any) {
         llmResponse = data;
+        chat = [...chat, { role: "assistant", content: data }];
       });
     }
   }
@@ -138,6 +163,19 @@
     }
   }
 
+  function getChangeLineColor(line: string) {
+    if (line != "") {
+      let obj = JSON.parse(line);
+      if (obj["change_type"] == "+") {
+        return "#00be7e4d";
+      } else if (obj["change_type"] == "-") {
+        return "#ff1d5733";
+      } else {
+        return "";
+      }
+    }
+  }
+
   function openDialog() {
     if (llmSettingDialog.open) {
       llmSettingDialog.close();
@@ -148,7 +186,7 @@
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
-  <LlmSetting bind:selectedModel={selectedModel}/>
+  <LlmSetting bind:selectedModel />
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
@@ -163,24 +201,15 @@
       </button>
     </div>
     <div class="main-scrollbar chat-response">
-      {#if history.length > 0}
-        {#each history as historyItem}
-          {#if historyItem["role"] === "user"}
-            <pre
-              class="text-wrap-wrap hover w-90 full-border chat-item"
-              style="margin-left: auto;">{historyItem["content"]}</pre>
-          {:else}
-            <pre
-              class="text-wrap-wrap hover w-90 full-border chat-item">{historyItem[
-                "content"
-              ]}</pre>
-          {/if}
+      {#if chat.length > 0}
+        {#each chat as historyItem}
+          <ChatItem {historyItem} />
         {/each}
       {/if}
     </div>
     <div class="chat-footer">
       <div class="flex endpoint-input top-border h-100">
-        {#if history.length > 0}
+        {#if chat.length > 0}
           <form class="w-100 flex">
             <input class="w-100 input" bind:value={userInput} />
             <button class="btn" on:click={(_) => sendMessage()}>Send</button>
@@ -201,7 +230,9 @@
   <div class="w-50 h-100">
     <div class="h-50 left-border bottom-border main-scrollbar">
       {#each fileDiff.split("\n") as line}
-        <pre class="hover margin-0 text-wrap-wrap">{printFileChangeLine(
+        <pre
+          style="background-color: {getChangeLineColor(line)};"
+          class="hover m-0 text-wrap-wrap">{printFileChangeLine(
             line
           )}</pre>
       {/each}
@@ -244,10 +275,5 @@
 
   .chat-footer {
     height: 37px;
-  }
-
-  .chat-item {
-    padding: 4px;
-    border-radius: 2px;
   }
 </style>

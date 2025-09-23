@@ -1,5 +1,6 @@
 use std::{
     net::{Shutdown, TcpStream},
+    sync::OnceLock,
     thread,
     time::Duration,
 };
@@ -9,9 +10,15 @@ use tauri::{AppHandle, Emitter};
 
 mod utils;
 
+static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            APP_HANDLE.set(app.handle().clone()).unwrap();
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
