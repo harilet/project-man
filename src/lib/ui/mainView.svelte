@@ -6,8 +6,12 @@
   import { onMount } from "svelte";
   import LlmSetting from "./llmSetting.svelte";
   import ChatItem from "./chatItem.svelte";
+  import Add from "$lib/icons/add.svelte";
+  import Close from "$lib/icons/close.svelte";
 
   let stagedFiles: any[] = [];
+
+  let unStagedFiles: any[] = [];
 
   let fileDiff = "";
 
@@ -25,12 +29,20 @@
 
   let llmSettingDialog: HTMLDialogElement;
 
+  let view = "chat";
+
   $: {
     if (currentProject != "add" && currentProject != "") {
       invoke("get_staged_files", {
         location: currentProject,
       }).then(function (data: any) {
         stagedFiles = data;
+      });
+
+      invoke("get_unstaged_files", {
+        location: currentProject,
+      }).then(function (data: any) {
+        unStagedFiles = data;
       });
     }
   }
@@ -68,6 +80,15 @@
 
   function getChanges(file: string) {
     invoke("get_file_diff", {
+      location: currentProject,
+      file: file,
+    }).then(function (data: any) {
+      fileDiff = data;
+    });
+  }
+
+  function getUnstagedChanges(file: string) {
+    invoke("get_unstaged_file_diff", {
       location: currentProject,
       file: file,
     }).then(function (data: any) {
@@ -183,6 +204,44 @@
       llmSettingDialog.showModal();
     }
   }
+
+  function changeView(viewChange: string) {
+    view = viewChange;
+  }
+
+  function addFile(e: any, path: string) {
+    e.stopPropagation();
+    invoke("add_file_index", {
+      location: currentProject,
+      path: path,
+    }).then(function () {
+      getChangeFiles();
+    });
+  }
+
+  function removeFileFromIndex(e: any, path: string) {
+    e.stopPropagation();
+    invoke("remove_file_index", {
+      location: currentProject,
+      path: path,
+    }).then(function () {
+      getChangeFiles();
+    });
+  }
+
+  function getChangeFiles() {
+    invoke("get_staged_files", {
+      location: currentProject,
+    }).then(function (data: any) {
+      stagedFiles = data;
+    });
+
+    invoke("get_unstaged_files", {
+      location: currentProject,
+    }).then(function (data: any) {
+      unStagedFiles = data;
+    });
+  }
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
@@ -190,7 +249,74 @@
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
-  <div class="w-50 h-100">
+  <div class="w-25 h-100 right-border">
+    <button class="branch-name hover btn" on:click={(_) => changeView("chat")}
+      >chat</button
+    >
+    <button class="branch-name hover btn" on:click={(_) => changeView("git")}
+      >git</button
+    >
+  </div>
+  <div class="w-75 h-100" style="display: {view == 'git' ? 'block' : 'none'};">
+    <div class="h-100 flex">
+      <div class="w-50 h-100">
+        <div class="h-50 main-scrollbar right-border bottom-border">
+          Staged Files
+          {#each stagedFiles as file}
+            <button
+              on:click={(_) => getChanges(file)}
+              class="commit-file-path hover"
+            >
+              <div>
+                {file}
+              </div>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                on:click={function (e) {
+                  removeFileFromIndex(e, file);
+                }}
+              >
+                <Close />
+              </div>
+            </button>
+          {/each}
+        </div>
+        <div class="h-50 main-scrollbar right-border">
+          Unstaged Files
+          {#each unStagedFiles as file}
+            <button
+              on:click={(_) => getUnstagedChanges(file)}
+              class="commit-file-path hover"
+            >
+              <div>
+                {file}
+              </div>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                on:click={function (e) {
+                  addFile(e, file);
+                }}
+              >
+                <Add />
+              </div>
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="w-50 h-100 right-border bottom-border main-scrollbar">
+        <div>
+          {#each fileDiff.split("\n") as line}
+            <pre
+              style="background-color: {getChangeLineColor(line)};"
+              class="hover m-0 text-wrap-wrap">{printFileChangeLine(line)}</pre>
+          {/each}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="w-75 h-100" style="display: {view == 'chat' ? 'block' : 'none'};">
     <div class="chat-header">
       <button class="btn" on:click={(_) => openDialog()}>
         {#if selectedModel == ""}
@@ -217,46 +343,39 @@
         {:else}
           <form class="w-100 flex">
             <input class="w-100 input" bind:value={userInput} />
-            <button
-              class="btn w-100"
-              style="border-top: none;border-right: none;"
-              on:click={(_) => sendStartMessage()}>Start</button
+            <button class="btn w-100" on:click={(_) => sendStartMessage()}
+              >Start</button
             >
           </form>
         {/if}
       </div>
     </div>
   </div>
-  <div class="w-50 h-100">
-    <div class="h-50 left-border bottom-border main-scrollbar">
-      {#each fileDiff.split("\n") as line}
-        <pre
-          style="background-color: {getChangeLineColor(line)};"
-          class="hover m-0 text-wrap-wrap">{printFileChangeLine(
-            line
-          )}</pre>
-      {/each}
-    </div>
-    <div class="h-50 main-scrollbar left-border">
-      {#each stagedFiles as file}
-        <button
-          on:click={(_) => getChanges(file)}
-          class="commit-file-path hover"
-        >
-          {file}
-        </button>
-      {/each}
-    </div>
-  </div>
 </div>
 
 <style>
+  .branch-name {
+    padding: 10px 5px;
+    margin: 0px 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    width: -webkit-fill-available;
+    background: none;
+    color: var(--text-color);
+    text-align: start;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
   .commit-file-path {
     padding: 6px;
     cursor: pointer;
     border-radius: 4px;
     background: transparent;
-    color: var(----on-background-colorolor);
+    color: var(--text-color);
     border: none;
     width: -webkit-fill-available;
     text-align: start;

@@ -10,7 +10,7 @@ struct ChangeLine {
 }
 
 pub(crate) fn get_current_branch_name(location: String) -> Result<String, Box<dyn Error>> {
-        let repo: Repository;
+    let repo: Repository;
     match get_repo(location) {
         Ok(t_repo) => {
             repo = t_repo;
@@ -87,6 +87,38 @@ pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn 
     Ok(path_list)
 }
 
+pub(crate) fn get_unstaged_files(location: String) -> Result<Vec<String>, Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
+    let mut path_list = vec![];
+    let mut diff_opts = DiffOptions::new();
+    diff_opts
+        .patience(true)
+        .minimal(true)
+        .include_ignored(false)
+        .include_untracked(true)
+        .ignore_whitespace_eol(false);
+    let unstaged_diff = repo.diff_index_to_workdir(Some(&repo.index()?), Some(&mut diff_opts))?;
+    for diff in unstaged_diff.deltas().into_iter() {
+        path_list.push(match diff.new_file().path() {
+            Some(path) => match path.to_str() {
+                Some(path_str) => path_str.to_string(),
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        });
+    }
+    Ok(path_list)
+}
+
 pub(crate) fn get_file_diff(location: String, path: String) -> Result<Vec<String>, Box<dyn Error>> {
     let repo: Repository;
     match get_repo(location) {
@@ -110,15 +142,63 @@ pub(crate) fn get_file_diff(location: String, path: String) -> Result<Vec<String
 
     let mut diff_data: Vec<String> = vec![];
     repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?
-        .print(DiffFormat::Patch, |_d, _h, l| {
-            diff_data.push(format_change_line_item(l, _d).unwrap());
-            true
-        })?;
+        .print(
+            DiffFormat::Patch,
+            |_d, _h, l| match format_change_line_item(l, _d) {
+                Ok(data) => {
+                    diff_data.push(data);
+                    true
+                }
+                Err(_) => false,
+            },
+        )?;
 
     Ok(diff_data)
 }
 
-fn format_change_line_item(l: git2::DiffLine, d: git2::DiffDelta) -> Result<String, Box<dyn Error>> {
+pub(crate) fn get_unstaged_file_diff(
+    location: String,
+    path: String,
+) -> Result<Vec<String>, Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts
+        .patience(false)
+        .minimal(false)
+        .include_ignored(false)
+        .include_untracked(false)
+        .ignore_whitespace_eol(false)
+        .pathspec(path.clone());
+
+    let mut diff_data: Vec<String> = vec![];
+
+    repo.diff_index_to_workdir(Some(&repo.index()?), Some(&mut diff_opts))?
+        .print(
+            DiffFormat::Patch,
+            |_d, _h, l| match format_change_line_item(l, _d) {
+                Ok(data) => {
+                    diff_data.push(data);
+                    true
+                }
+                Err(_) => false,
+            },
+        )?;
+    Ok(diff_data)
+}
+
+fn format_change_line_item(
+    l: git2::DiffLine,
+    d: git2::DiffDelta,
+) -> Result<String, Box<dyn Error>> {
     let mut temp_data = ChangeLine {
         content: "".to_string(),
         to_no: "".to_string(),
@@ -169,4 +249,36 @@ fn format_change_line_item(l: git2::DiffLine, d: git2::DiffDelta) -> Result<Stri
 
     temp_data.content = content;
     Ok(serde_json::to_string(&temp_data)?)
+}
+
+pub(crate) fn add_file_index(location: String, path: String) -> Result<(), Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+    let mut index = repo.index()?;
+    index.add_path(Path::new(&path))?;
+    index.write()?;
+    Ok(())
+}
+
+pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+    let head = repo.head()?;
+    let commit = head.peel_to_commit()?;
+    repo.reset_default(Some(commit.as_object()), &[path])?;
+    Ok(())
 }

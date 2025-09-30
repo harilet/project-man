@@ -33,6 +33,10 @@ pub fn run() {
             get_current_branch_name,
             set_ollama_setting,
             get_ollama_setting,
+            get_unstaged_files,
+            get_unstaged_file_diff,
+            add_file_index,
+            remove_file_index,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -62,8 +66,31 @@ fn get_staged_files(app: AppHandle, location: String) -> Vec<String> {
 }
 
 #[tauri::command]
+fn get_unstaged_files(app: AppHandle, location: String) -> Vec<String> {
+    match utils::git::get_unstaged_files(location) {
+        Ok(files) => files,
+        Err(e) => {
+            println!("{:#?}", e);
+            app.emit("app-error", e.to_string()).unwrap();
+            vec![]
+        }
+    }
+}
+
+#[tauri::command]
 fn get_file_diff(app: AppHandle, location: String, file: String) -> String {
     match utils::git::get_file_diff(location, file) {
+        Ok(file_diff) => file_diff.join("\n"),
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+fn get_unstaged_file_diff(app: AppHandle, location: String, file: String) -> String {
+    match utils::git::get_unstaged_file_diff(location, file) {
         Ok(file_diff) => file_diff.join("\n"),
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
@@ -197,6 +224,28 @@ async fn get_ollama_setting(app: AppHandle) -> String {
 #[tauri::command]
 async fn set_ollama_setting(app: AppHandle, name: String, value: String) {
     match utils::db::set_ollama_setting(name, value).await {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+async fn add_file_index(app: AppHandle, location: String, path: String) {
+    match utils::git::add_file_index(location, path) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+async fn remove_file_index(app: AppHandle, location: String, path: String) {
+    match utils::git::remove_file_index(location, path) {
         Ok(_) => {}
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
