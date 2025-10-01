@@ -97,21 +97,32 @@
   }
 
   function sendStartMessage() {
+    history.push({
+      content:
+        "You are a programming expert who generates precise and unambiguous responses. Your primary task is to create clear, concise, and accurate git commit messages. If the provided changes are unclear, you should ask a clarifying question instead of guessing.",
+      role: "system",
+      thinking: null,
+      tool_calls: [],
+    });
+
     let message = [];
     message.push(
-      "Create commit message for the following file/files which contains the changes " +
-        stagedFiles.join(", ")
-    );
-    message.push("you can use the get_file_diff to get the changes of a file");
-    message.push(
-      "The current repo you are using is " +
-        currentProject.replaceAll("\\", "/")
-    );
-    message.push(
-      "create seperate commit messages for each file and summarize into one single commit message ideally 1 to 2 lines"
+      `repository: ${currentProject.replaceAll("\\", "/")}
+branch name: ${branchName}
+The following file/files contain changes:
+${stagedFiles.join("\n")}`
     );
 
-    message.push("The current branch name is " + branchName);
+    message.push(
+      `You should either:
+1. Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
+2. Or, if the changes are ambiguous, reply with a clarifying question.
+
+Do not invent details.
+Do not provide explanations beyond the commit message or the question.
+Use get_file_diff to get changes of the file
+Use get_file to get contents of the whole file`
+    );
 
     if (userInput != "") {
       message.push(userInput);
