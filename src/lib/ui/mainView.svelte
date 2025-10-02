@@ -16,6 +16,8 @@
   let fileDiff = "";
 
   let selectedModel = "";
+  let user_prompt = "";
+  let system_prompt = "";
 
   let llmResponse = "";
 
@@ -98,8 +100,7 @@
 
   function sendStartMessage() {
     history.push({
-      content:
-        "You are a programming expert who generates precise and unambiguous responses. Your primary task is to create clear, concise, and accurate git commit messages. If the provided changes are unclear, you should ask a clarifying question instead of guessing.",
+      content: system_prompt,
       role: "system",
       thinking: null,
       tool_calls: [],
@@ -107,22 +108,13 @@
 
     let message = [];
     message.push(
-      `repository: ${currentProject.replaceAll("\\", "/")}
-branch name: ${branchName}
-The following file/files contain changes:
-${stagedFiles.join("\n")}`
+      `Repository: ${currentProject.replaceAll("\\", "/")}
+Branch: ${branchName}
+Changed file/files:
+- ${stagedFiles.join("\n- ")}`
     );
 
-    message.push(
-      `You should either:
-1. Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
-2. Or, if the changes are ambiguous, reply with a clarifying question.
-
-Do not invent details.
-Do not provide explanations beyond the commit message or the question.
-Use get_file_diff to get changes of the file
-Use get_file to get contents of the whole file`
-    );
+    message.push(user_prompt);
 
     if (userInput != "") {
       message.push(userInput);
@@ -256,7 +248,7 @@ Use get_file to get contents of the whole file`
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
-  <LlmSetting bind:selectedModel />
+  <LlmSetting bind:selectedModel bind:system_prompt bind:user_prompt />
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
