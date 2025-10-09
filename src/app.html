@@ -46,6 +46,32 @@
         background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7));
         animation: fade-in 1s;
       }
+
+      progress {
+        color: var(--primary-color);
+        background: lightgrey;
+        height: 2px;
+        width: 100%;
+        border-radius: 0px;
+      }
+
+      progress::-moz-progress-bar {
+        background: currentColor;
+        border-radius: 0px;
+        padding: 0px;
+      }
+
+      progress::-webkit-progress-bar {
+        background: white;
+        border-radius: 0px;
+        padding: 0px
+      }
+
+      progress::-webkit-progress-value {
+        background: currentColor;
+        border-radius: 0px;
+        padding: 0px
+      }
     </style>
   </head>
   <body data-sveltekit-preload-data="hover">

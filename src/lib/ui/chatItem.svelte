@@ -80,6 +80,10 @@
       {/each}
     {/if}
   </div>
+{:else if historyItem["role"] === "system"}
+  <pre
+    class="text-wrap-wrap hover full-border chat-item"
+    style="width: calc(100% - 10px);">{historyItem["content"]}</pre>
 {:else}
   <pre class="text-wrap-wrap hover w-90 full-border chat-item">{historyItem[
       "content"

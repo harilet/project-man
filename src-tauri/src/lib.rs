@@ -37,6 +37,7 @@ pub fn run() {
             get_unstaged_file_diff,
             add_file_index,
             remove_file_index,
+            generate_commit_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -250,6 +251,18 @@ async fn remove_file_index(app: AppHandle, location: String, path: String) {
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+async fn generate_commit_message(app: AppHandle, location: String) -> String {
+    match utils::l_ollama::generate_commit_message(location).await {
+        Ok(data) => data.message.content,
+        Err(e) => {
+            println!("{:#?}", e);
+            app.emit("app-error", e.to_string()).unwrap();
+            "".to_string()
         }
     }
 }

@@ -1,6 +1,8 @@
 use ollama_rs::{
     coordinator::Coordinator,
-    generation::chat::{ChatMessage, ChatMessageResponse},
+    generation::chat::{
+        request::ChatMessageRequest, ChatMessage, ChatMessageResponse, MessageRole,
+    },
     Ollama,
 };
 use std::{error::Error, fs};
@@ -121,4 +123,90 @@ async fn get_file_diff(
     .unwrap();
 
     Ok(contents)
+}
+
+pub(crate) async fn generate_commit_message(
+    location: String,
+) -> Result<ChatMessageResponse, Box<dyn Error>> {
+    let ollama_settings = db::get_ollama_setting().await?;
+    let ollama_server = match ollama_settings.get("ollama_server") {
+        Some(da) => da.clone(),
+        None => "".to_string(),
+    };
+    let model = match ollama_settings.get("model") {
+        Some(da) => da.clone(),
+        None => "".to_string(),
+    };
+
+    let files = git::get_staged_files(location.clone())?;
+
+    let ollama = Ollama::from_url(Url::parse(&ollama_server)?);
+    let app = APP_HANDLE.get().unwrap();
+
+    let mut file_summries = vec![];
+
+    let legth = files.len();
+
+    for (index, file) in files.iter().enumerate() {
+        app.emit("commit-progress", format!("{}/{}", index, legth))
+            .unwrap();
+        let change_content = git::get_file_diff(location.clone(), file.clone())?;
+        let mut messages = vec![];
+        messages.push(ChatMessage::new(
+            MessageRole::System,
+            "You are a programming expert who generates precise and unambiguous responses."
+                .to_string(),
+        ));
+        messages.push(ChatMessage::new(
+            MessageRole::User,
+            format!(
+                "`change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk
+ `from_no` is the original line number,
+ `to_no` is the new line number and
+ `content` is the changes made
+ create a brief and concise summrize the following file changes:\nfilename: {}\nchanges:\n{}",
+                file,
+                change_content.join("\n")
+            ),
+        ));
+
+        println!("{:#?}", messages);
+
+        let mut cmr = ChatMessageRequest::new(model.clone(), messages);
+
+        cmr = cmr.think(false);
+
+        let response = ollama.send_chat_messages(cmr).await?;
+
+        println!("\n{}\n", response.message.content);
+
+        file_summries.push(response.message.content);
+        app.emit("commit-progress", format!("{}/{}", index + 1, legth))
+            .unwrap();
+    }
+
+    let mut messages = vec![];
+    messages.push(ChatMessage::new(
+        MessageRole::System,
+        "You are a programming expert who generates precise and unambiguous responses.".to_string(),
+    ));
+    messages.push(ChatMessage::new(
+        MessageRole::User,
+        format!(
+            "Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
+
+Do not invent details.
+Do not provide explanations beyond the commit message or the question.
+
+The Following is the file changes:\n{}",
+            file_summries.join("\n\n")
+        ),
+    ));
+
+    app.emit("get-history", messages.clone()).unwrap();
+    let cmr = ChatMessageRequest::new(model.clone(), messages);
+
+    let response = ollama.send_chat_messages(cmr).await?;
+    println!("{}", response.message.content);
+    Ok(response)
 }

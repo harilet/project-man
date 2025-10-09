@@ -33,6 +33,10 @@
 
   let view = "chat";
 
+  let mode = "";
+
+  let progress = "";
+
   $: {
     if (currentProject != "add" && currentProject != "") {
       invoke("get_staged_files", {
@@ -71,12 +75,17 @@
     listen("get-history", function (data: any) {
       history = data.payload;
       console.log(history);
+      chat = [...chat, ...history];
     });
 
     listen("tool-call", function (data: any) {
       let message: string = data.payload;
       chat = [...chat, { role: "tool", content: message }];
       console.log(message);
+    });
+
+    listen("commit-progress", function (data: any) {
+      progress = data.payload;
     });
   });
 
@@ -98,49 +107,28 @@
     });
   }
 
-  function sendStartMessage() {
-    history.push({
-      content: system_prompt,
-      role: "system",
-      thinking: null,
-      tool_calls: [],
-    });
-
+  function sendMessage() {
     let message = [];
-    message.push(
-      `Repository: ${currentProject.replaceAll("\\", "/")}
+    if (history.length == 0) {
+      history.push({
+        content: system_prompt,
+        role: "system",
+        thinking: null,
+        tool_calls: [],
+      });
+
+      message.push(
+        `Repository: ${currentProject.replaceAll("\\", "/")}
 Branch: ${branchName}
 Changed file/files:
 - ${stagedFiles.join("\n- ")}`
-    );
+      );
 
-    message.push(user_prompt);
-
-    if (userInput != "") {
-      message.push(userInput);
-      userInput = "";
+      message.push(user_prompt);
     }
-
-    let chat_history = message.map(function (value) {
-      return { role: "user", content: value };
-    });
-
-    chat = [...chat, ...chat_history];
-    console.log(chat);
-
-    invoke("send_message", {
-      model: selectedModel,
-      messages: message,
-      history: history,
-    }).then(function (data: any) {
-      llmResponse = data;
-      chat = [...chat, { role: "assistant", content: data }];
-    });
-  }
-
-  function sendMessage() {
+    console.log(history);
+    console.log(message);
     if (userInput != "") {
-      let message = [];
       message.push(userInput);
       userInput = "";
       let chat_history = message.map(function (value) {
@@ -148,7 +136,6 @@ Changed file/files:
       });
 
       chat = [...chat, ...chat_history];
-      console.log(chat);
       invoke("send_message", {
         model: selectedModel,
         messages: message,
@@ -245,6 +232,16 @@ Changed file/files:
       unStagedFiles = data;
     });
   }
+
+  function generateCommitMessage() {
+    mode = "chat";
+    invoke("generate_commit_message", {
+      location: currentProject,
+    }).then(function (data: any) {
+      llmResponse = data;
+      chat = [...chat, { role: "assistant", content: data }];
+    });
+  }
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
@@ -320,6 +317,10 @@ Changed file/files:
     </div>
   </div>
   <div class="w-75 h-100" style="display: {view == 'chat' ? 'block' : 'none'};">
+    <progress
+      value={progress.split("/")[0]}
+      max={progress.split("/")[1]}>%</progress
+    >
     <div class="chat-header">
       <button class="btn" on:click={(_) => openDialog()}>
         {#if selectedModel == ""}
@@ -329,28 +330,45 @@ Changed file/files:
         {/if}
       </button>
     </div>
-    <div class="main-scrollbar chat-response">
-      {#if chat.length > 0}
-        {#each chat as historyItem}
-          <ChatItem {historyItem} />
-        {/each}
-      {/if}
+    <div
+      style="height: calc(100% - 30px);display: {mode == '' ? 'flex' : 'none'};"
+      class="flex flex-justify-center flex-align-center"
+    >
+      <div class="flex flex-column" style="width: 95%;">
+        <button
+          class="btn"
+          style="margin: 5px;"
+          on:click={(_) => generateCommitMessage()}
+        >
+          generate commit message
+        </button>
+
+        <button
+          class="btn"
+          style="margin: 5px;"
+          on:click={(_) => {
+            mode = "chat";
+          }}
+        >
+          chat
+        </button>
+      </div>
     </div>
-    <div class="chat-footer">
-      <div class="flex endpoint-input top-border h-100">
+    <div class="h-100" style="display: {mode == 'chat' ? 'block' : 'none'};">
+      <div class="main-scrollbar chat-response">
         {#if chat.length > 0}
+          {#each chat as historyItem}
+            <ChatItem {historyItem} />
+          {/each}
+        {/if}
+      </div>
+      <div class="chat-footer">
+        <div class="flex endpoint-input top-border h-100">
           <form class="w-100 flex">
             <input class="w-100 input" bind:value={userInput} />
             <button class="btn" on:click={(_) => sendMessage()}>Send</button>
           </form>
-        {:else}
-          <form class="w-100 flex">
-            <input class="w-100 input" bind:value={userInput} />
-            <button class="btn w-100" on:click={(_) => sendStartMessage()}
-              >Start</button
-            >
-          </form>
-        {/if}
+        </div>
       </div>
     </div>
   </div>
@@ -388,7 +406,7 @@ Changed file/files:
   }
 
   .chat-header {
-    height: 37px;
+    height: 24px;
   }
 
   .chat-response {
