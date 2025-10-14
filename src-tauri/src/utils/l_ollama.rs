@@ -39,13 +39,23 @@ pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>
     for local_model in res {
         let model_info = ollama.show_model_info(local_model.name.clone()).await?;
         let architecture = match model_info.model_info.get("general.architecture") {
-            Some(architecture) => architecture.to_string(),
+            Some(architecture) => architecture.to_string().replace("\"", ""),
             None => "".to_string(),
         };
+        let context_key = format!("{}.context_length", architecture);
+
+        let context_length = match model_info.model_info.get(&context_key) {
+            Some(context) => match context.as_u64() {
+                Some(num) => num,
+                None => 0,
+            },
+            None => 0,
+        };
+
         let model_data = ModelData {
             name: local_model.name,
             architecture: architecture,
-            context: "12k".to_string(),
+            context: format!("{}", context_length),
             capabilities: model_info.capabilities,
         };
         local_models.push(serde_json::to_string(&model_data)?);
@@ -143,6 +153,9 @@ pub(crate) async fn generate_commit_message(
     let ollama = Ollama::from_url(Url::parse(&ollama_server)?);
     let app = APP_HANDLE.get().unwrap();
 
+    let context_size = 3000;
+    let context_overlap = 100;
+
     let mut file_summries = vec![];
 
     let legth = files.len();
@@ -157,28 +170,41 @@ pub(crate) async fn generate_commit_message(
             "You are a programming expert who generates precise and unambiguous responses."
                 .to_string(),
         ));
-        messages.push(ChatMessage::new(
-            MessageRole::User,
-            format!(
-                "`change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk
- `from_no` is the original line number,
- `to_no` is the new line number and
- `content` is the changes made
- create a brief and concise summrize the following file changes:\nfilename: {}\nchanges:\n{}",
-                file,
-                change_content.join("\n")
-            ),
-        ));
 
-        println!("{:#?}", messages);
+        let main_content_message=format!(
+            "`change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk
+`from_no` is the original line number,
+`to_no` is the new line number and
+`content` is the changes made
+create a brief and concise summrize the following file changes:\nfilename: {}\nchanges:\n{}",
+            file,
+            change_content.join("\n")
+        );
+        let contx_length = main_content_message.chars().count() / 4;
+
+        if contx_length >= context_size {
+            for i in 0..((contx_length / context_size) + 1) {
+                let start = i * context_size;
+                let end = ((i + 1) * context_size) + context_overlap;
+                messages.push(ChatMessage::new(
+                    MessageRole::User,
+                    format!(
+                        "Chunk {}/{}:\n<text>\n{}\n</text>",
+                        i + 1,
+                        (contx_length / context_size) + 1,
+                        main_content_message[start..end].to_string()
+                    ),
+                ));
+            }
+        } else {
+            messages.push(ChatMessage::new(MessageRole::User, main_content_message));
+        }
 
         let mut cmr = ChatMessageRequest::new(model.clone(), messages);
 
         cmr = cmr.think(false);
 
         let response = ollama.send_chat_messages(cmr).await?;
-
-        println!("\n{}\n", response.message.content);
 
         file_summries.push(response.message.content);
         app.emit("commit-progress", format!("{}/{}", index + 1, legth))
@@ -190,23 +216,40 @@ pub(crate) async fn generate_commit_message(
         MessageRole::System,
         "You are a programming expert who generates precise and unambiguous responses.".to_string(),
     ));
-    messages.push(ChatMessage::new(
-        MessageRole::User,
-        format!(
-            "Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
+
+    let main_content_message = format!(
+        "Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
 
 Do not invent details.
 Do not provide explanations beyond the commit message or the question.
 
 The Following is the file changes:\n{}",
-            file_summries.join("\n\n")
-        ),
-    ));
+        file_summries.join("\n\n")
+    );
+
+    let contx_length = main_content_message.chars().count() / 4;
+
+    if contx_length >= context_size {
+        for i in 0..((contx_length / context_size) + 1) {
+            let start = i * context_size;
+            let end = ((i + 1) * context_size) + context_overlap;
+            messages.push(ChatMessage::new(
+                MessageRole::User,
+                format!(
+                    "Chunk {}/{}:\n<text>\n{}\n</text>",
+                    i + 1,
+                    (contx_length / context_size) + 1,
+                    main_content_message[start..end].to_string()
+                ),
+            ));
+        }
+    } else {
+        messages.push(ChatMessage::new(MessageRole::User, main_content_message));
+    }
 
     app.emit("get-history", messages.clone()).unwrap();
     let cmr = ChatMessageRequest::new(model.clone(), messages);
 
     let response = ollama.send_chat_messages(cmr).await?;
-    println!("{}", response.message.content);
     Ok(response)
 }
