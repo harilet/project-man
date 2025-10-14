@@ -109,25 +109,7 @@
 
   function sendMessage() {
     let message = [];
-    if (history.length == 0) {
-      history.push({
-        content: system_prompt,
-        role: "system",
-        thinking: null,
-        tool_calls: [],
-      });
-
-      message.push(
-        `Repository: ${currentProject.replaceAll("\\", "/")}
-Branch: ${branchName}
-Changed file/files:
-- ${stagedFiles.join("\n- ")}`
-      );
-
-      message.push(user_prompt);
-    }
-    console.log(history);
-    console.log(message);
+    
     if (userInput != "") {
       message.push(userInput);
       userInput = "";
