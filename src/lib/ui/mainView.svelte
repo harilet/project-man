@@ -75,7 +75,7 @@
     listen("get-history", function (data: any) {
       history = data.payload;
       console.log(history);
-      chat = [...chat, ...history];
+      chat = history;
     });
 
     listen("tool-call", function (data: any) {
@@ -109,22 +109,17 @@
 
   function sendMessage() {
     let message = [];
-    
+
     if (userInput != "") {
       message.push(userInput);
       userInput = "";
-      let chat_history = message.map(function (value) {
-        return { role: "user", content: value };
-      });
 
-      chat = [...chat, ...chat_history];
       invoke("send_message", {
         model: selectedModel,
         messages: message,
         history: history,
       }).then(function (data: any) {
         llmResponse = data;
-        chat = [...chat, { role: "assistant", content: data }];
       });
     }
   }
@@ -299,9 +294,8 @@
     </div>
   </div>
   <div class="w-75 h-100" style="display: {view == 'chat' ? 'block' : 'none'};">
-    <progress
-      value={progress.split("/")[0]}
-      max={progress.split("/")[1]}>%</progress
+    <progress value={progress.split("/")[0]} max={progress.split("/")[1]}
+      >%</progress
     >
     <div class="chat-header">
       <button class="btn" on:click={(_) => openDialog()}>
