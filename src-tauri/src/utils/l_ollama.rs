@@ -165,18 +165,33 @@ pub(crate) async fn generate_commit_message(
             .unwrap();
         let change_content = git::get_file_diff(location.clone(), file.clone())?;
         let mut messages = vec![];
-        messages.push(ChatMessage::new(
-            MessageRole::System,
-            "You are a programming expert who generates precise and unambiguous responses."
-                .to_string(),
-        ));
 
         let main_content_message=format!(
-            "`change_type` for the type of change that is as follows '-' are removed lines, '+' are added lines, ' ' do not have any change, 'M' indicates the file in content is modified, 'A' indicates the file in content is a new file, 'D' indicates the file in content is deleted file and 'H' the header for a change chunk
-`from_no` is the original line number,
-`to_no` is the new line number and
-`content` is the changes made
-create a brief and concise summrize the following file changes:\nfilename: {}\nchanges:\n{}",
+            "You are a precise code summarizer that extracts key atomic changes from file diffs in a compact, structured format.
+
+Your goal is to identify what changed and the observable reason behind it, based strictly on the diff content — no guessing or speculation.
+
+Output Format (strict JSON):
+{{
+    \"file\": \"<filename>\",
+    \"changes\": [
+        {{\"action\": \"<verb>\", \"target\": \"<entity>\", \"reason\": \"<short purpose>\"}}
+    ]
+}}
+
+Guidelines:
+- Use one object per file.
+- Each \"changes\" entry represents an atomic edit (e.g., a function, class, or config change).
+- Use short, consistent action verbs:
+  add, remove, update, fix, refactor, rename, move, change, etc.
+- The \"target\" should be a concise identifier (e.g., function name, class, module, feature, config).
+- The \"reason\" must describe the purpose in 3-8 words, inferred from context (e.g., \"to fix bug\", \"to simplify logic\", \"to support new feature\").
+- Exclude irrelevant or trivial edits (formatting, spacing, comment-only changes).
+- Output valid JSON only — no explanations, no Markdown, no prose.
+
+filename: {}
+changes:
+{}",
             file,
             change_content.join("\n")
         );
@@ -205,25 +220,32 @@ create a brief and concise summrize the following file changes:\nfilename: {}\nc
         cmr = cmr.think(false);
 
         let response = ollama.send_chat_messages(cmr).await?;
-
-        file_summries.push(response.message.content);
+        let response_content = response.message.content;
+        file_summries.push(response_content.clone());
+        app.emit(
+            "file-summrie",
+            format!("{{file:{},response:{}}}", file, response_content),
+        )
+        .unwrap();
         app.emit("commit-progress", format!("{}/{}", index + 1, legth))
             .unwrap();
     }
 
     let mut messages = vec![];
-    messages.push(ChatMessage::new(
-        MessageRole::System,
-        "You are a programming expert who generates precise and unambiguous responses.".to_string(),
-    ));
 
     let main_content_message = format!(
-        "Reply with a single commit message (1 sentence, covering all files), including both what changed and why it was done.
+        "You are a professional Git commit message generator.
+Your task is to write a single, concise commit message (one sentence) describing all changes across files.
 
-Do not invent details.
-Do not provide explanations beyond the commit message or the question.
+Guidelines:
+- Combine the provided atomic edits naturally into a coherent commit message.
+- Capture both what changed and why, if implied.
+- Use imperative tone (e.g., “Add…”, “Refactor…”, “Fix…”).
+- Do not invent motivations or context not present in the edits.
+- Output only the commit message — no extra text, formatting, or explanations.
 
-The Following is the file changes:\n{}",
+File changes:
+{}",
         file_summries.join("\n\n")
     );
 
