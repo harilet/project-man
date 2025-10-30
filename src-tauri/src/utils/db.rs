@@ -142,13 +142,9 @@ pub(crate) async fn set_ollama_setting(
 }
 
 async fn get_db() -> Result<Connection, Box<dyn Error>> {
-    let exe_path: PathBuf = get_exe_dir()?;
-    let project_list_path = exe_path.join("config\\config.db");
+    let project_list_path = "/home/cyber/Documents/tauri/project-man/config/config.db";
 
-    let db = Builder::new_local(project_list_path.to_str().unwrap())
-        .build()
-        .await
-        .unwrap();
+    let db = Builder::new_local(project_list_path).build().await.unwrap();
     let conn = db.connect()?;
     Ok(conn)
 }
@@ -170,12 +166,4 @@ async fn dose_table_exists(table_name: String) -> Result<bool, Box<dyn Error>> {
     }
 
     Ok(table_exists)
-}
-
-fn get_exe_dir() -> Result<PathBuf, Box<dyn Error>> {
-    let exe_path = env::current_exe()?;
-    return Ok(exe_path
-        .parent()
-        .expect("Failed to get executable directory")
-        .to_path_buf());
 }
