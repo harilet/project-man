@@ -8,6 +8,7 @@
   import ChatItem from "./chatItem.svelte";
   import Add from "$lib/icons/add.svelte";
   import Close from "$lib/icons/close.svelte";
+  import GenerateCommitMessage from "./generateCommitMessage.svelte";
 
   let stagedFiles: any[] = [];
 
@@ -211,13 +212,13 @@
   }
 
   function generateCommitMessage() {
-    mode = "chat";
-    invoke("generate_commit_message", {
-      location: currentProject,
-    }).then(function (data: any) {
-      llmResponse = data;
-      chat = [...chat, { role: "assistant", content: data }];
-    });
+    mode = "commit-message";
+    // invoke("generate_commit_message", {
+    //   location: currentProject,
+    // }).then(function (data: any) {
+    //   llmResponse = data;
+    //   chat = [...chat, { role: "assistant", content: data }];
+    // });
   }
 </script>
 
@@ -346,6 +347,14 @@
           </form>
         </div>
       </div>
+    </div>
+    <div
+      class="h-100"
+      style="display: {mode == 'commit-message' ? 'block' : 'none'};"
+    >
+      {#if mode == "commit-message"}
+        <GenerateCommitMessage currentProject={currentProject}/>
+      {/if}
     </div>
   </div>
 </div>

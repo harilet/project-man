@@ -224,7 +224,7 @@ changes:
         file_summries.push(response_content.clone());
         app.emit(
             "file-summrie",
-            format!("{{file:{},response:{}}}", file, response_content),
+            format!("{{\"file\":\"{}\",\"response\":{}}}", file, response_content),
         )
         .unwrap();
         app.emit("commit-progress", format!("{}/{}", index + 1, legth))
