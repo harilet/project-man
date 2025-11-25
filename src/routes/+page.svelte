@@ -96,7 +96,7 @@
 
 <ErrorToast bind:message={error} />
 
-<div class="container flex flex-column">
+<div class="main-container flex flex-column">
   <Tabs bind:tabItems={openProjects} bind:currentTab={currentProject} />
   <div style="height:calc(100% - 44px);">
     <div
@@ -155,7 +155,7 @@
 </div>
 
 <style>
-  .container {
+  .main-container {
     height: calc(100% - 70px);
   }
   .app-bar {

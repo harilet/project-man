@@ -311,7 +311,9 @@
       style="height: calc(100% - 30px);display: {mode == '' ? 'flex' : 'none'};"
       class="flex flex-justify-center flex-align-center"
     >
-      <div class="flex flex-column" style="width: 95%;">
+      <div
+        class="flex flex-column action-buttons-group"
+      >
         <button
           class="btn"
           style="margin: 5px;"
@@ -353,7 +355,7 @@
       style="display: {mode == 'commit-message' ? 'block' : 'none'};"
     >
       {#if mode == "commit-message"}
-        <GenerateCommitMessage currentProject={currentProject}/>
+        <GenerateCommitMessage {currentProject} />
       {/if}
     </div>
   </div>
@@ -400,5 +402,14 @@
 
   .chat-footer {
     height: 37px;
+  }
+
+  .action-buttons-group {
+    width: 95%;
+    padding: 30px;
+    margin: 30px;
+    border: 1px solid var(--border-color);
+    background: var(--fill-color);
+    border-radius: 5px;
   }
 </style>

@@ -1,5 +1,5 @@
 use libsql::{params, Builder, Connection};
-use std::{collections::HashMap, env, error::Error, path::PathBuf, time::SystemTime};
+use std::{collections::HashMap, error::Error, time::SystemTime};
 
 pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     let db = get_db().await?;

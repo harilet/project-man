@@ -12,7 +12,7 @@
 </script>
 
 <div class="file-summrie-card full-border">
-  <div>
+  <div class="bottom-border">
     {getFilename()}
   </div>
   <div class="file-summrie-changes">
@@ -20,15 +20,27 @@
       <div class="file-summrie-change-item">
         <div class="flex">
           <div>
-            {contentObj["action"]}:
+            action:
+          </div>
+          <div style="margin-left: 5px;">
+            {contentObj["action"]}
+          </div>
+        </div>
+                <div class="flex">
+          <div>
+            target:
           </div>
           <div style="margin-left: 5px;">
             {contentObj["target"]}
           </div>
         </div>
-
-        <div>
-          {contentObj["reason"]}
+                <div class="flex">
+          <div>
+            reason:
+          </div>
+          <div style="margin-left: 5px;">
+            {contentObj["reason"]}
+          </div>
         </div>
       </div>
     {/each}
@@ -38,7 +50,7 @@
 <style>
   .file-summrie-card {
     margin: 4px;
-    padding: 2px;
+    padding: 4px;
   }
 
   .file-summrie-changes {

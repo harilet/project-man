@@ -31,12 +31,21 @@
     {/each}
   </div>
   <div class="w-50">
-    {finalSummries}
+    <div class="full-border final-commit-message">
+      {finalSummries}
+    </div>
   </div>
 </div>
 
 <style>
   .file-summries {
     height: calc(100% - 40px);
+  }
+
+  .final-commit-message {
+    margin: 5px;
+    margin-top: 50%;
+    margin-bottom: 50%;
+    padding: 10px;
   }
 </style>
