@@ -59,6 +59,23 @@
       });
     }
   }
+
+  function setTheme() {
+  const root = document.documentElement;
+
+  let theme = {
+        "text-color": "#ffffff",
+        "hover-color": "#0b0809",
+        "primary-color": "#c27aff",
+        "background-color": "#0a0a0a",
+        "border-color": "color-mix(in oklab, var(--primary-color) 30%, transparent)",
+        "fill-color": "#171717",
+};
+
+  Object.entries(theme).forEach(([key, value]) => {
+    root.style.setProperty(`--${key}`, value);
+  });
+}
 </script>
 
 <div class="h-100 flex flex-column">
@@ -96,6 +113,10 @@
         bind:value={user_prompt}
       ></textarea>
     </div>
+
+    <button class="btn" on:click={(_) => setTheme()}
+      >Chnage theme</button
+    >
 
     <button class="btn" on:click={(_) => saveOllamaServerSettings()}
       >Save</button
