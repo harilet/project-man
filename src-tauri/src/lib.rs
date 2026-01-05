@@ -38,6 +38,7 @@ pub fn run() {
             add_file_index,
             remove_file_index,
             generate_commit_message,
+            send_git_diff_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -129,6 +130,86 @@ async fn send_message(
 
     app.emit("get-history", t_history.clone()).unwrap();
     let result = utils::l_ollama::send_message(model, t_messages.clone(), history).await;
+    match result {
+        Ok(data) => {
+            t_history.push(data.message.clone());
+            app.emit("get-history", t_history).unwrap();
+            data.message.content
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+async fn send_git_diff_message(app: AppHandle, model: String, location: String) -> String {
+    let mut t_messages = vec![];
+    let mut t_history: Vec<ChatMessage> = vec![];
+
+    t_messages.push(ChatMessage::new(
+        ollama_rs::generation::chat::MessageRole::User,
+        "You are a professional Git commit message generator.
+Your task is to write a single, concise commit message (one sentence) describing all changes across files.
+
+Guidelines:
+- Capture both what changed and why, if implied.
+- Use imperative tone (e.g., “Add…”, “Refactor…”, “Fix…”).
+- Do not invent motivations or context not present in the edits.
+- Output only the commit message no extra text, formatting, or explanations.
+".to_string(),
+    ));
+
+    match utils::git::get_staged_files(location.clone()) {
+        Ok(files) => {
+            for file in files {
+                let change_content = utils::git::get_file_diff(location.clone(), file.clone());
+                match change_content {
+                    Ok(change_data) => {
+                        let context_size = 3000;
+                        let context_overlap = 100;
+
+                        let change_content_str = format!("file name: {}\nchanges:\n{}", file, change_data.join("\n"));
+                        let contx_length = change_content_str.chars().count() / 4;
+
+                        if contx_length >= context_size {
+                            for i in 0..((contx_length / context_size) + 1) {
+                                let start = i * context_size;
+                                let end = ((i + 1) * context_size) + context_overlap;
+                                let message = ChatMessage::new(
+                                    ollama_rs::generation::chat::MessageRole::User,
+                                    format!(
+                                        "Chunk {}/{}:\n<text>\n{}\n</text>",
+                                        i + 1,
+                                        (contx_length / context_size) + 1,
+                                        change_content_str[start..end].to_string()
+                                    ),
+                                );
+                                t_messages.push(message.clone());
+                                t_history.push(message);
+                            }
+                        } else {
+                            let message = ChatMessage::new(
+                                ollama_rs::generation::chat::MessageRole::User,
+                                change_content_str,
+                            );
+                            t_messages.push(message.clone());
+                            t_history.push(message);
+                        }
+                    }
+                    Err(e) => {
+                        app.emit("app-error", e.to_string()).unwrap();
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+        }
+    }
+
+    let result = utils::l_ollama::send_message(model, t_messages.clone(), t_history.clone()).await;
     match result {
         Ok(data) => {
             t_history.push(data.message.clone());

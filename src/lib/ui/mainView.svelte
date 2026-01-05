@@ -311,9 +311,7 @@
       style="height: calc(100% - 30px);display: {mode == '' ? 'flex' : 'none'};"
       class="flex flex-justify-center flex-align-center"
     >
-      <div
-        class="flex flex-column action-buttons-group"
-      >
+      <div class="flex flex-column action-buttons-group">
         <button
           class="btn"
           style="margin: 5px;"
@@ -327,6 +325,13 @@
           style="margin: 5px;"
           on:click={(_) => {
             mode = "chat";
+            invoke("send_git_diff_message", {
+              model: selectedModel,
+              location: currentProject,
+            }).then(function (data: any) {
+              llmResponse = data;
+              console.log(data);
+            });
           }}
         >
           chat
