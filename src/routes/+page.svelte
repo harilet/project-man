@@ -2,7 +2,6 @@
   import FolderOpen from "$lib/icons/folder_open.svelte";
   import ErrorToast from "$lib/ui/errorToast.svelte";
   import MainView from "$lib/ui/mainView.svelte";
-  import ModelDropDown from "$lib/ui/modelDropDown.svelte";
   import Tabs from "$lib/ui/tabs.svelte";
   import Titlebar from "$lib/ui/titlebar.svelte";
   import { invoke } from "@tauri-apps/api/core";
