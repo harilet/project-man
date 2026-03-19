@@ -1,13 +1,11 @@
+use ollama_rs::generation::chat::{ChatMessage, MessageRole};
 use std::{
     net::{Shutdown, TcpStream},
     sync::OnceLock,
     thread,
     time::Duration,
 };
-
-use ollama_rs::generation::chat::ChatMessage;
 use tauri::{AppHandle, Emitter};
-
 mod utils;
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -22,11 +20,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            get_project_struture,
             get_staged_files,
             get_file_diff,
             get_all_local_models,
-            send_message,
             get_recent_projects,
             set_projects,
             start_ollama_server_check,
@@ -37,20 +33,13 @@ pub fn run() {
             get_unstaged_file_diff,
             add_file_index,
             remove_file_index,
+            send_message,
+            get_saved_messages,
+            add_saved_messages,
+            delete_saved_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[tauri::command]
-fn get_project_struture(app: AppHandle, location: String) -> Vec<String> {
-    match utils::git::get_project_struture(location) {
-        Ok(struture) => struture,
-        Err(e) => {
-            app.emit("app-error", e.to_string()).unwrap();
-            vec![]
-        }
-    }
 }
 
 #[tauri::command]
@@ -78,8 +67,8 @@ fn get_unstaged_files(app: AppHandle, location: String) -> Vec<String> {
 }
 
 #[tauri::command]
-fn get_file_diff(app: AppHandle, location: String, file: String) -> String {
-    match utils::git::get_file_diff(location, file) {
+fn get_file_diff(app: AppHandle, location: String, file: String, is_unified: bool) -> String {
+    match utils::git::get_file_diff(location, file, is_unified) {
         Ok(file_diff) => file_diff.join("\n"),
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
@@ -111,37 +100,6 @@ async fn get_all_local_models(app: AppHandle) -> Vec<String> {
 }
 
 #[tauri::command]
-async fn send_message(
-    app: AppHandle,
-    model: String,
-    messages: Vec<String>,
-    history: Vec<ChatMessage>,
-) -> String {
-    let mut t_messages = vec![];
-    let mut t_history = history.clone();
-
-    for message in messages {
-        let chat_message = ChatMessage::user(message);
-        t_messages.push(chat_message.clone());
-        t_history.push(chat_message);
-    }
-
-    app.emit("get-history", t_history.clone()).unwrap();
-    let result = utils::l_ollama::send_message(model, t_messages.clone(), history).await;
-    match result {
-        Ok(data) => {
-            t_history.push(data.message.clone());
-            app.emit("get-history", t_history).unwrap();
-            data.message.content
-        }
-        Err(e) => {
-            app.emit("app-error", e.to_string()).unwrap();
-            "".to_string()
-        }
-    }
-}
-
-#[tauri::command]
 async fn get_recent_projects(app: AppHandle) -> Vec<String> {
     match utils::db::init_db().await {
         Ok(_file_diff) => {}
@@ -151,15 +109,13 @@ async fn get_recent_projects(app: AppHandle) -> Vec<String> {
         }
     }
 
-    match utils::db::get_recent_projects().await {
-        Ok(data) => {
-            return data;
-        }
+    return match utils::db::get_recent_projects().await {
+        Ok(data) => data,
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
-            return vec![];
+            vec![]
         }
-    }
+    };
 }
 
 #[tauri::command]
@@ -250,6 +206,65 @@ async fn remove_file_index(app: AppHandle, location: String, path: String) {
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+async fn send_message(
+    app: AppHandle,
+    message: Vec<ChatMessage>,
+    history: Vec<ChatMessage>,
+) -> ChatMessage {
+    println!("message: {:#?}", message);
+    println!("history: {:#?}", history);
+    match utils::l_ollama::send_message(message, history).await {
+        Ok(response) => {
+            println!("{:#?}", response.message);
+            return response.message;
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            return ChatMessage::new(MessageRole::User, "".to_string());
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_saved_messages(app: AppHandle) -> Vec<String> {
+    match utils::db::get_saved_messages().await {
+        Ok(data) => {
+            println!("{:#?}", data);
+            data
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
+        }
+    }
+}
+
+#[tauri::command]
+async fn add_saved_messages(app: AppHandle, message: String) -> Vec<String> {
+    let app_clone = app.clone();
+    match utils::db::add_saved_messages(message).await {
+        Ok(data) => data,
+        Err(e) => {
+            app_clone.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
+        }
+    }
+}
+
+#[tauri::command]
+async fn delete_saved_message(app: AppHandle, message: String) -> Vec<String> {
+    let app_clone = app.clone();
+    match utils::db::delete_saved_message(message).await {
+        Ok(data) => data,
+        Err(e) => {
+            app_clone.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
         }
     }
 }

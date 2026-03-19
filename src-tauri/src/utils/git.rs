@@ -1,4 +1,4 @@
-use git2::{DiffFormat, DiffOptions, Repository, TreeWalkMode};
+use git2::{DiffFormat, DiffOptions, Repository};
 use std::{error::Error, path::Path};
 
 #[derive(Clone, serde::Serialize, Debug)]
@@ -26,34 +26,6 @@ pub(crate) fn get_current_branch_name(location: String) -> Result<String, Box<dy
 
 fn get_repo(location: String) -> Result<Repository, Box<dyn Error>> {
     return Ok(Repository::open(location)?);
-}
-
-pub(crate) fn get_project_struture(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location.clone()) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
-
-    let mut list_of_files = vec![];
-
-    let rev = get_current_branch_name(location)?;
-    let obj = repo.revparse_single(&rev)?;
-    let tree = obj.peel_to_tree()?;
-
-    tree.walk(TreeWalkMode::PreOrder, |path, file| {
-        let file = format!("{}{}", path, file.name().expect("File Name Empty"));
-        if !(Path::new(&file).is_dir()) {
-            list_of_files.push(file);
-        }
-        git2::TreeWalkResult::Ok
-    })?;
-
-    Ok(list_of_files)
 }
 
 pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn Error>> {
@@ -119,7 +91,11 @@ pub(crate) fn get_unstaged_files(location: String) -> Result<Vec<String>, Box<dy
     Ok(path_list)
 }
 
-pub(crate) fn get_file_diff(location: String, path: String) -> Result<Vec<String>, Box<dyn Error>> {
+pub(crate) fn get_file_diff(
+    location: String,
+    path: String,
+    is_unified: bool,
+) -> Result<Vec<String>, Box<dyn Error>> {
     let repo: Repository;
     match get_repo(location) {
         Ok(t_repo) => {
@@ -141,19 +117,34 @@ pub(crate) fn get_file_diff(location: String, path: String) -> Result<Vec<String
     let old_tree = repo.head()?.peel_to_tree()?;
 
     let mut diff_data: Vec<String> = vec![];
-    repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?
-        .print(
-            DiffFormat::Patch,
-            |_d, _h, l| match format_change_line_item(l, _d) {
-                Ok(data) => {
-                    diff_data.push(data);
-                    true
-                }
-                Err(_) => false,
-            },
-        )?;
+    let diff =
+        repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?;
 
-    Ok(diff_data)
+    if is_unified {
+        diff.print(DiffFormat::Patch, |_d, _, line| {
+            let c_line = format!(
+                "{}{}",
+                line.origin().to_string(),
+                String::from_utf8_lossy(line.content())
+            );
+            diff_data.push(c_line);
+            true
+        })?;
+        return Ok(diff_data);
+    }
+
+    diff.print(
+        DiffFormat::Patch,
+        |_d, _h, l| match format_change_line_item(l, _d) {
+            Ok(data) => {
+                diff_data.push(data);
+                true
+            }
+            Err(_) => false,
+        },
+    )?;
+
+    return Ok(diff_data);
 }
 
 pub(crate) fn get_unstaged_file_diff(

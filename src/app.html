@@ -8,11 +8,11 @@
     %sveltekit.head%
     <style>
       :root {
+        --primary-color: #00d492;
         --text-color: #ffffff;
-        --hover-color: #ffffff10;
-        --primary-color: #00d3f3;
-        --background-color: #000000;
-        --border-color: #262626;
+        --hover-color: color-mix(in oklab, var(--primary-color) 10%, transparent);
+        --background-color: #0a0a0a;
+        --border-color: color-mix(in oklab, var(--primary-color) 50%, transparent);
       }
       body {
         background-color: var(--background-color);
@@ -45,6 +45,32 @@
       dialog::backdrop {
         background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7));
         animation: fade-in 1s;
+      }
+
+      progress {
+        color: var(--primary-color);
+        background: var(--text-color);
+        height: 2px;
+        width: 100%;
+        border-radius: 0px;
+      }
+
+      progress::-moz-progress-bar {
+        background: currentColor;
+        border-radius: 0px;
+        padding: 0px;
+      }
+
+      progress::-webkit-progress-bar {
+        background: var(--text-color);
+        border-radius: 0px;
+        padding: 0px
+      }
+
+      progress::-webkit-progress-value {
+        background: currentColor;
+        border-radius: 0px;
+        padding: 0px
       }
     </style>
   </head>

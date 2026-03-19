@@ -2,7 +2,6 @@
   import FolderOpen from "$lib/icons/folder_open.svelte";
   import ErrorToast from "$lib/ui/errorToast.svelte";
   import MainView from "$lib/ui/mainView.svelte";
-  import ModelDropDown from "$lib/ui/modelDropDown.svelte";
   import Tabs from "$lib/ui/tabs.svelte";
   import Titlebar from "$lib/ui/titlebar.svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -96,7 +95,7 @@
 
 <ErrorToast bind:message={error} />
 
-<div class="container flex flex-column">
+<div class="main-container flex flex-column">
   <Tabs bind:tabItems={openProjects} bind:currentTab={currentProject} />
   <div style="height:calc(100% - 44px);">
     <div
@@ -155,7 +154,7 @@
 </div>
 
 <style>
-  .container {
+  .main-container {
     height: calc(100% - 70px);
   }
   .app-bar {

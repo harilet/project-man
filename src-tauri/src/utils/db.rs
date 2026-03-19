@@ -1,5 +1,5 @@
 use libsql::{params, Builder, Connection};
-use std::{collections::HashMap, env, error::Error, path::PathBuf, time::SystemTime};
+use std::{collections::HashMap, error::Error, time::SystemTime};
 
 pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     let db = get_db().await?;
@@ -34,6 +34,18 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
             "CREATE TABLE 'ollama_setting' (
                 'name'	TEXT NOT NULL UNIQUE,
                 'value'	TEXT
+            );",
+            (),
+        )
+        .await?;
+    }
+
+    if !(dose_table_exists("saved_messages".to_string()).await?) {
+        db.execute(
+            "CREATE TABLE 'saved_messages' (
+                'id'	INTEGER NOT NULL UNIQUE,
+                'messages'	TEXT NOT NULL,
+                PRIMARY KEY('id' AUTOINCREMENT)
             );",
             (),
         )
@@ -142,13 +154,9 @@ pub(crate) async fn set_ollama_setting(
 }
 
 async fn get_db() -> Result<Connection, Box<dyn Error>> {
-    let exe_path: PathBuf = get_exe_dir()?;
-    let project_list_path = exe_path.join("config\\config.db");
+    let project_list_path = "/home/cyber/Documents/tauri/project-man/config/config.db";
 
-    let db = Builder::new_local(project_list_path.to_str().unwrap())
-        .build()
-        .await
-        .unwrap();
+    let db = Builder::new_local(project_list_path).build().await.unwrap();
     let conn = db.connect()?;
     Ok(conn)
 }
@@ -172,10 +180,44 @@ async fn dose_table_exists(table_name: String) -> Result<bool, Box<dyn Error>> {
     Ok(table_exists)
 }
 
-fn get_exe_dir() -> Result<PathBuf, Box<dyn Error>> {
-    let exe_path = env::current_exe()?;
-    return Ok(exe_path
-        .parent()
-        .expect("Failed to get executable directory")
-        .to_path_buf());
+pub(crate) async fn get_saved_messages() -> Result<Vec<String>, Box<dyn Error>> {
+    let db = get_db().await?;
+    let mut result = db.query("SELECT * FROM saved_messages;", ()).await?;
+    let mut result_data = vec![];
+    while let Some(data) = result.next().await? {
+        result_data.push(data.get_str(1)?.to_string());
+    }
+    Ok(result_data)
+}
+
+pub(crate) async fn add_saved_messages(message: String) -> Result<Vec<String>, Box<dyn Error>> {
+    let db = get_db().await?;
+    db.query(
+        "INSERT INTO saved_messages (messages) VALUES (?1)",
+        params![message],
+    )
+    .await?;
+
+    let mut result = db.query("SELECT * FROM saved_messages;", ()).await?;
+    let mut result_data = vec![];
+    while let Some(data) = result.next().await? {
+        result_data.push(data.get_str(1)?.to_string());
+    }
+    Ok(result_data)
+}
+
+pub(crate) async fn delete_saved_message(message: String) -> Result<Vec<String>, Box<dyn Error>> {
+    let db = get_db().await?;
+    db.query(
+        "DELETE FROM saved_messages WHERE messages=?1",
+        params![message],
+    )
+    .await?;
+
+    let mut result = db.query("SELECT * FROM saved_messages;", ()).await?;
+    let mut result_data = vec![];
+    while let Some(data) = result.next().await? {
+        result_data.push(data.get_str(1)?.to_string());
+    }
+    Ok(result_data)
 }
