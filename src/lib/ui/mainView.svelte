@@ -1,12 +1,12 @@
 <script lang="ts">
     export let currentProject: string;
     import { invoke } from "@tauri-apps/api/core";
-    import { listen } from "@tauri-apps/api/event";
     import { onMount } from "svelte";
     import LlmSetting from "./llmSetting.svelte";
     import ChatItem from "./chatItem.svelte";
     import Add from "$lib/icons/add.svelte";
     import Close from "$lib/icons/close.svelte";
+    import SavedMessages from "./savedMessages.svelte";
 
     let stagedFiles: any[] = [];
 
@@ -15,8 +15,6 @@
     let fileDiff = "";
 
     let selectedModel = "";
-    let user_prompt = "";
-    let system_prompt = "";
 
     let chat: any[] = [];
 
@@ -26,7 +24,7 @@
 
     let view = "chat";
 
-    let progress = "";
+    let isOpenSavedMessages = false;
 
     $: {
         if (currentProject != "add" && currentProject != "") {
@@ -184,7 +182,7 @@
         }
     }
 
-    function openDialog() {
+    function openSettingDialog() {
         if (llmSettingDialog.open) {
             llmSettingDialog.close();
         } else {
@@ -229,14 +227,18 @@
             unStagedFiles = data;
         });
     }
+
+    function openSavedMessages() {
+        isOpenSavedMessages = !isOpenSavedMessages;
+    }
 </script>
 
 <dialog bind:this={llmSettingDialog} on:close>
-    <LlmSetting bind:selectedModel bind:system_prompt bind:user_prompt />
+    <LlmSetting bind:selectedModel />
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
-    <div class="w-25 h-100 right-border">
+    <div class="h-100 right-border" style="width: 200px;">
         <button
             class="branch-name hover btn"
             on:click={(_) => changeView("chat")}>chat</button
@@ -247,8 +249,10 @@
         >
     </div>
     <div
-        class="w-75 h-100"
-        style="display: {view == 'git' ? 'block' : 'none'};"
+        class="h-100"
+        style="display: {view == 'git'
+            ? 'block'
+            : 'none'}; width: -webkit-fill-available;"
     >
         <div class="h-100 flex">
             <div class="w-50 h-100">
@@ -313,38 +317,51 @@
         </div>
     </div>
     <div
-        class="w-75 h-100"
-        style="display: {view == 'chat' ? 'block' : 'none'};"
+        class="h-100"
+        style="display: {view == 'chat'
+            ? 'block'
+            : 'none'}; width: -webkit-fill-available;"
     >
-        <progress value={progress.split("/")[0]} max={progress.split("/")[1]}
-            >%</progress
+        <div
+            class="chat-header bottom-border flex flex-justify-between flex-align-center"
         >
-        <div class="chat-header">
-            <button class="btn" on:click={(_) => openDialog()}>
+            <button class="btn" on:click={(_) => openSettingDialog()}>
                 {#if selectedModel == ""}
                     LLM Settings
                 {:else}
                     {selectedModel}
                 {/if}
             </button>
+            <button class="btn" on:click={(_) => openSavedMessages()}>
+                Saved Messages
+            </button>
         </div>
-        <div class="h-100">
-            <div class="main-scrollbar chat-response">
-                {#if chat.length > 0}
-                    {#each chat as historyItem}
-                        <ChatItem {historyItem} />
-                    {/each}
-                {/if}
-            </div>
-            <div class="chat-footer">
-                <div class="flex endpoint-input top-border h-100">
-                    <form class="w-100 flex">
-                        <input class="w-100 input" bind:value={userInput} />
-                        <button class="btn" on:click={(_) => sendMessage()}
-                            >Send</button
-                        >
-                    </form>
+        <div class="h-100 flex">
+            <div
+                style="height: calc(100% - 24px); {isOpenSavedMessages
+                    ? 'width: 60%;'
+                    : 'width: 100%'}"
+            >
+                <div class="main-scrollbar chat-response">
+                    {#if chat.length > 0}
+                        {#each chat as historyItem}
+                            <ChatItem {historyItem} />
+                        {/each}
+                    {/if}
                 </div>
+                <div class="chat-footer">
+                    <div class="flex endpoint-input top-border h-100">
+                        <form class="w-100 flex">
+                            <input class="w-100 input" bind:value={userInput} />
+                            <button class="btn" on:click={(_) => sendMessage()}
+                                >Send</button
+                            >
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="left-border" style="height: calc(100% - 24px); display: {isOpenSavedMessages?'flex':'none'}; width: 40%">
+                <SavedMessages bind:userInput={userInput} />
             </div>
         </div>
     </div>
@@ -381,12 +398,8 @@
         align-items: center;
     }
 
-    .chat-header {
-        height: 24px;
-    }
-
     .chat-response {
-        height: calc(100% - 74px);
+        height: calc(100% - 35px);
     }
 
     .chat-footer {

@@ -34,6 +34,9 @@ pub fn run() {
             add_file_index,
             remove_file_index,
             send_message,
+            get_saved_messages,
+            add_saved_messages,
+            delete_saved_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -224,6 +227,44 @@ async fn send_message(
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
             return ChatMessage::new(MessageRole::User, "".to_string());
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_saved_messages(app: AppHandle) -> Vec<String> {
+    match utils::db::get_saved_messages().await {
+        Ok(data) => {
+            println!("{:#?}", data);
+            data
+        }
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
+        }
+    }
+}
+
+#[tauri::command]
+async fn add_saved_messages(app: AppHandle, message: String) -> Vec<String> {
+    let app_clone = app.clone();
+    match utils::db::add_saved_messages(message).await {
+        Ok(data) => data,
+        Err(e) => {
+            app_clone.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
+        }
+    }
+}
+
+#[tauri::command]
+async fn delete_saved_message(app: AppHandle, message: String) -> Vec<String> {
+    let app_clone = app.clone();
+    match utils::db::delete_saved_message(message).await {
+        Ok(data) => data,
+        Err(e) => {
+            app_clone.emit("app-error", e.to_string()).unwrap();
+            ["{}".to_string()].to_vec()
         }
     }
 }

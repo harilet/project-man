@@ -8,12 +8,11 @@
     %sveltekit.head%
     <style>
       :root {
-        --text-color: #ffffff;
-        --hover-color: #0b0809;
         --primary-color: #00d492;
+        --text-color: #ffffff;
+        --hover-color: color-mix(in oklab, var(--primary-color) 10%, transparent);
         --background-color: #0a0a0a;
-        --border-color: color-mix(in oklab, var(--primary-color) 30%, transparent);
-        --fill-color: #171717;
+        --border-color: color-mix(in oklab, var(--primary-color) 50%, transparent);
       }
       body {
         background-color: var(--background-color);
