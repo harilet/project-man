@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import ModelDropDown from "./modelDropDown.svelte";
     import { invoke } from "@tauri-apps/api/core";
+    import dataStore from "$lib/data_store";
     export let selectedModel = "";
 
     let ollama_settings: any;
@@ -37,10 +38,11 @@
         }
     }
 
-    function colorChange(){
+    async function colorChange(){
       const root = document.documentElement;
 
       root.style.setProperty(`--primary-color`, color);
+      await dataStore.set("primary-color", color);
     }
 </script>
 

@@ -8,6 +8,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
+  import dataStore from "$lib/data_store";
 
   let recentProjects: any[] = [];
 
@@ -44,6 +45,13 @@
     });
 
     invoke("start_ollama_server_check");
+
+    dataStore.get("primary-color").then((data: any) => {
+        if (data != null) {
+          const root = document.documentElement;
+          root.style.setProperty(`--primary-color`, data);
+        }
+    });
   });
 
   async function openFileSelector() {
