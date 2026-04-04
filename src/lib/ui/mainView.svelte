@@ -7,6 +7,7 @@
     import Add from "$lib/icons/add.svelte";
     import Close from "$lib/icons/close.svelte";
     import SavedMessages from "./savedMessages.svelte";
+    import { listen } from "@tauri-apps/api/event";
 
     let stagedFiles: any[] = [];
 
@@ -25,6 +26,8 @@
     let view = "chat";
 
     let isOpenSavedMessages = false;
+
+    let serverLive = false;
 
     $: {
         if (currentProject != "add" && currentProject != "") {
@@ -52,6 +55,15 @@
                 event.clientX <= rect.left + rect.width;
             if (!isInDialog) {
                 llmSettingDialog.close();
+            }
+        });
+
+        listen("ollama-server-status", function (data: any) {
+            let message: string = data.payload;
+            if (message == "live") {
+                serverLive = true;
+            } else {
+                serverLive = false;
             }
         });
     });
@@ -238,7 +250,7 @@
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
-    <div class="h-100 right-border" style="width: 200px;">
+    <div class="h-100 right-border flex flex-column" style="width: 200px;">
         <button
             class="branch-name hover btn"
             on:click={(_) => changeView("chat")}>chat</button
@@ -325,20 +337,32 @@
         <div
             class="chat-header bottom-border flex flex-justify-between flex-align-center"
         >
-            <button class="btn" on:click={(_) => openSettingDialog()}>
-                {#if selectedModel == ""}
-                    LLM Settings
-                {:else}
-                    {selectedModel}
-                {/if}
+            <button
+                class="btn flex flex-row"
+                on:click={(_) => openSettingDialog()}
+            >
+                <div>
+                    {#if selectedModel == ""}
+                        LLM Settings
+                    {:else}
+                        {selectedModel}
+                    {/if}
+                </div>
+
+                <span
+                    style="background-color: {serverLive
+                        ? 'var(--primary-color)'
+                        : 'red'};"
+                    class="server-status-indicator"
+                ></span>
             </button>
             <button class="btn" on:click={(_) => openSavedMessages()}>
                 Saved Messages
             </button>
         </div>
-        <div class="h-100 flex">
+        <div class="flex" style="height: calc(100% - 26px); ">
             <div
-                style="height: calc(100% - 24px); {isOpenSavedMessages
+                style="{isOpenSavedMessages
                     ? 'width: 60%;'
                     : 'width: 100%'}"
             >
@@ -349,19 +373,20 @@
                         {/each}
                     {/if}
                 </div>
-                <div class="chat-footer">
-                    <div class="flex endpoint-input top-border h-100">
-                        <form class="w-100 flex">
-                            <input class="w-100 input" bind:value={userInput} />
-                            <button class="btn" on:click={(_) => sendMessage()}
-                                >Send</button
-                            >
-                        </form>
-                    </div>
-                </div>
+                <form class="w-100 flex top-border" style="height: 40px;">
+                    <input class="w-100 input" bind:value={userInput} />
+                    <button class="btn" on:click={(_) => sendMessage()}
+                        >Send</button
+                    >
+                </form>
             </div>
-            <div class="left-border" style="height: calc(100% - 24px); display: {isOpenSavedMessages?'flex':'none'}; width: 40%">
-                <SavedMessages bind:userInput={userInput} />
+            <div
+                class="left-border"
+                style="height: calc(100% - 24px); display: {isOpenSavedMessages
+                    ? 'flex'
+                    : 'none'}; width: 40%"
+            >
+                <SavedMessages bind:userInput />
             </div>
         </div>
     </div>
@@ -399,10 +424,15 @@
     }
 
     .chat-response {
-        height: calc(100% - 35px);
+        height: calc(100% - 40px);
     }
 
-    .chat-footer {
-        height: 37px;
+    .server-status-indicator {
+        border-radius: 100%;
+        height: 15px;
+        width: 15px;
+        display: inline-block;
+        margin-right: 5px;
+        margin-left: 5px;
     }
 </style>

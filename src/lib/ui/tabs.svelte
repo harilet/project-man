@@ -62,6 +62,7 @@
     .enable-border {
         border-bottom: 2px solid var(--primary-color);
     }
+
     .tabs {
         height: 37px;
         padding: 1px;

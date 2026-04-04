@@ -92,7 +92,7 @@
   path {
     fill: var(--text-color);
   }
-  
+
   .window-controls {
     display: flex;
   }

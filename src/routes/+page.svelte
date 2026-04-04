@@ -19,8 +19,6 @@
 
   let error: any[] = [];
 
-  let serverLive = false;
-
   $: {
     if (openProjects.length > 0) {
       currentProject = openProjects[openProjects.length - 1].key;
@@ -33,15 +31,6 @@
     listen("app-error", function (data: any) {
       let message: string = data.payload;
       error = [...error, message];
-    });
-
-    listen("ollama-server-status", function (data: any) {
-      let message: string = data.payload;
-      if (message == "live") {
-        serverLive = true;
-      } else {
-        serverLive = false;
-      }
     });
 
     if (openProjects.length > 0) {
@@ -145,18 +134,12 @@
     </div>
   </div>
 </div>
-<div class="w-100 footer-class top-border flex flex-align-center">
-  <div class="w-100">hu</div>
-  <span
-    style="background-color: {serverLive ? 'var(--primary-color)' : 'red'};"
-    class="server-status-indicator"
-  ></span>
-</div>
 
 <style>
   .main-container {
-    height: calc(100% - 70px);
+    height: calc(100% - 34px);
   }
+
   .app-bar {
     width: 100%;
     height: 35px;
@@ -170,10 +153,6 @@
     margin: 4px;
   }
 
-  .footer-class {
-    height: 34px;
-  }
-
   .recent-project {
     margin: 5px 0px;
     border-radius: 2px;
@@ -181,13 +160,5 @@
 
   .recent-column {
     padding: 5px;
-  }
-
-  .server-status-indicator {
-    border-radius: 100%;
-    height: 15px;
-    width: 15px;
-    display: inline-block;
-    margin-right: 5px;
   }
 </style>

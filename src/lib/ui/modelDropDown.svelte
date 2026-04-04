@@ -24,7 +24,7 @@
   function handleDropdownFocusLoss(relatedTarget: any) {
     if (
       relatedTarget.relatedTarget instanceof HTMLElement &&
-      relatedTarget.currentTarget.contains(relatedTarget)
+      relatedTarget.currentTarget.contains(relatedTarget.relatedTarget)
     )
       return;
     isDropdownOpen = false;
