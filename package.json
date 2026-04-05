@@ -13,10 +13,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tauri-apps/api": "^2",
+    "@tauri-apps/api": "v2.9.5",
     "@tauri-apps/plugin-dialog": "^2.3.3",
-    "@tauri-apps/plugin-opener": "^2",
-    "@tauri-apps/plugin-store": "^2.4.2"
+    "@tauri-apps/plugin-opener": "^2"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.9",

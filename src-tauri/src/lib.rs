@@ -121,7 +121,6 @@ async fn get_recent_projects(app: AppHandle) -> Vec<String> {
 
 #[tauri::command]
 async fn set_projects(app: AppHandle, name: String, path: String) {
-    println!("{name}:{path}");
     match utils::db::set_projects(name, path).await {
         Ok(_) => {}
         Err(e) => {
@@ -236,7 +235,6 @@ async fn send_message(
 async fn get_saved_messages(app: AppHandle) -> Vec<String> {
     match utils::db::get_saved_messages().await {
         Ok(data) => {
-            println!("{:#?}", data);
             data
         }
         Err(e) => {

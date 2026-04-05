@@ -90,21 +90,27 @@
     async function sendMessage() {
         if (userInput != "") {
             let message: any;
-            console.log("Sending message...", chat.length);
+            console.log("Sending message...");
             if (chat.length == 0) {
+              message = {
+                  role: "system",
+                  content: `You are a git assistant. You have access to tools to read recent commits and repository files. When generating response, use these tools to check relevant file context before responding.`,
+                  tool_calls: [],
+                  thinking: null,
+              };
+              chat = [...chat, message];
+
                 let staged_diff = "";
                 let stagedFiles: any = await invoke("get_staged_files", {
                     location: currentProject,
                 });
                 console.log(stagedFiles);
                 for (let file in stagedFiles) {
-                    console.log("file", stagedFiles[file]);
                     let file_diff = await invoke("get_file_diff", {
                         location: currentProject,
                         file: stagedFiles[file],
                         isUnified: true,
                     });
-                    console.log(file_diff);
                     staged_diff += file_diff;
                 }
                 console.log(staged_diff);
@@ -115,7 +121,6 @@
                     tool_calls: [],
                     thinking: null,
                 };
-                console.log(message);
                 chat = [...chat, message];
                 console.log(chat);
             }
@@ -133,7 +138,6 @@
                 message: [message],
                 history: chat,
             }).then(function (data: any) {
-                console.log(data);
                 chat = [...chat, data];
                 console.log(chat);
             });

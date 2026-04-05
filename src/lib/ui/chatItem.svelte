@@ -83,7 +83,7 @@
 {:else if historyItem["role"] === "system"}
   <pre
     class="text-wrap-wrap hover full-border chat-item"
-    style="width: calc(100% - 10px); padding: 5px;">{historyItem["content"]}</pre>
+    style="width: calc(100% - 12px); padding: 5px;">{historyItem["content"]}</pre>
 {:else}
   <pre class="text-wrap-wrap hover w-90 full-border chat-item" style="padding: 5px;">{historyItem[
       "content"
