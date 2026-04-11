@@ -92,33 +92,32 @@
             let message: any;
             console.log("Sending message...");
             if (chat.length == 0) {
-              message = {
-                  role: "system",
-                  content: `You are a git assistant. You have access to tools to read recent commits and repository files. When generating response, use these tools to check relevant file context before responding.`,
-                  tool_calls: [],
-                  thinking: null,
-              };
-              chat = [...chat, message];
-
-                let staged_diff = "";
-                let stagedFiles: any = await invoke("get_staged_files", {
+                let project_tree: string[] = await invoke("get_project_tree", {
                     location: currentProject,
                 });
-                console.log(stagedFiles);
-                for (let file in stagedFiles) {
-                    let file_diff = await invoke("get_file_diff", {
-                        location: currentProject,
-                        file: stagedFiles[file],
-                        isUnified: true,
-                    });
-                    staged_diff += file_diff;
-                }
-                console.log(staged_diff);
 
                 message = {
-                    role: "user",
-                    content: staged_diff,
-                    tool_calls: [],
+                    role: "system",
+                    content: `You are a coding assistant with access to a local codebase.
+## Project git repository location
+${currentProject}
+
+## Project structure
+${project_tree.join("\n")}
+
+## Available tools
+- read_repo_file
+- list_dir
+- search_code
+- read_multiple_files
+- get_staged_diff
+
+## Guidelines
+- Always explore before reading: use list_dir or search_code to locate relevant files first
+- Prefer read_multiple_files over repeated read_repo_file calls
+- Search before reading: use search_code to find where something is defined or used
+- Never guess file paths; verify them with list_dir or search_code first";
+`,
                     thinking: null,
                 };
                 chat = [...chat, message];
@@ -365,11 +364,7 @@
             </button>
         </div>
         <div class="flex" style="height: calc(100% - 26px); ">
-            <div
-                style="{isOpenSavedMessages
-                    ? 'width: 60%;'
-                    : 'width: 100%'}"
-            >
+            <div style={isOpenSavedMessages ? "width: 60%;" : "width: 100%"}>
                 <div class="main-scrollbar chat-response">
                     {#if chat.length > 0}
                         {#each chat as historyItem}

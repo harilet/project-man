@@ -1,4 +1,5 @@
 use git2::{DiffFormat, DiffOptions, Repository};
+use std::fs;
 use std::{error::Error, path::Path};
 
 #[derive(Clone, serde::Serialize, Debug)]
@@ -272,4 +273,102 @@ pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Bo
     let commit = head.peel_to_commit()?;
     repo.reset_default(Some(commit.as_object()), &[path])?;
     Ok(())
+}
+
+pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn Error>> {
+    use std::process::Command;
+
+    let output = Command::new("tree")
+        .arg("--gitignore")
+        .arg("-I")
+        .arg("target|node_modules|.git|build")
+        .arg(&location)
+        .output()?;
+
+    if !output.status.success() {
+        return Err(format!("tree command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+    }
+
+    let stdout = String::from_utf8(output.stdout)?;
+    let mut tree_list = vec![];
+
+    for line in stdout.lines() {
+        // Skip the header line and empty lines
+        if line.starts_with(&location) || line.is_empty() || line.contains("directories") {
+            continue;
+        }
+
+        // Parse the tree output line
+        let parsed_line = line
+            .trim_start_matches(|c| c == '│' || c == '├' || c == '─' || c == '└')
+            .trim();
+
+        if !parsed_line.is_empty() {
+            tree_list.push(parsed_line.to_string());
+        }
+    }
+
+    Ok(tree_list)
+}
+
+pub(crate) fn get_staged_diff(location: String) -> Result<Vec<String>, Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
+    let mut diff_opts = DiffOptions::new();
+    let old_tree = repo.head()?.peel_to_tree()?;
+    let mut diff_data: Vec<String> = vec![];
+
+    let diff =
+        repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?;
+
+    diff.print(DiffFormat::Patch, |_d, _, line| {
+        let c_line = format!(
+            "{}{}",
+            line.origin().to_string(),
+            String::from_utf8_lossy(line.content())
+        );
+        diff_data.push(c_line);
+        true
+    })?;
+
+    Ok(diff_data)
+}
+
+pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Error>> {
+    let repo: Repository;
+    match get_repo(location) {
+        Ok(t_repo) => {
+            repo = t_repo;
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+
+    let mut diff_opts = DiffOptions::new();
+    let old_tree = repo.head()?.peel_to_tree()?;
+    let mut diff_data: Vec<String> = vec![];
+
+    let diff =
+        repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?;
+
+    diff.print(DiffFormat::Patch, |_d, _, line| {
+        let c_line = format!(
+            "{}{}",
+            line.origin().to_string(),
+            String::from_utf8_lossy(line.content())
+        );
+        diff_data.push(c_line);
+        true
+    })?;
+
+    Ok(diff_data.join("\n"))
 }

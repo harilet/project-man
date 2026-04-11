@@ -1,5 +1,11 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import Add from "$lib/icons/add.svelte";
+  import Close from "$lib/icons/close.svelte";
+
+  export let tabItems: any[];
+  export let currentTab: string;
+  export let showCloseBth = true;
 
   export let selectedTab = "manga";
 
@@ -20,10 +26,59 @@
   function tabSelect(item: string) {
     selectedTab = item;
   }
+
+  function setItem(key: string) {
+      currentTab = key;
+  }
+
+  function closeProject(e: any, key: string) {
+      e.preventDefault();
+      tabItems = tabItems.filter((value, index) => value.key !== key);
+      setTimeout(() => {
+          if (tabItems.length > 0) {
+              setItem(tabItems[tabItems.length - 1].key);
+          } else {
+              setItem("add");
+          }
+      }, 0);
+  }
 </script>
 
 <div data-tauri-drag-region class="title-bar">
-  <div class="tabs"></div>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="tabs">
+      {#each tabItems as item}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+              class="items flex flex-justify-between flex-align-center {currentTab ==
+              item.key
+                  ? 'enable-border'
+                  : ''}"
+              on:click={(_) => setItem(item.key)}
+          >
+              <div>
+                  {item.name.split("/").at(-1)}
+              </div>
+              {#if showCloseBth}
+                  <button
+                      class="close-btn"
+                      on:click={(e) => closeProject(e, item.key)}
+                  >
+                      <Close />
+                  </button>
+              {/if}
+          </div>
+      {/each}
+      {#if showCloseBth}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+              on:click={(_) => setItem("add")}
+              class="add-item flex flex-justify-center flex-align-center"
+          >
+              <div><Add /></div>
+          </div>
+      {/if}
+  </div>
   <div class="window-controls">
     <button
       aria-label="Reduce button"
@@ -101,6 +156,9 @@
     display: flex;
     color: var(--primary-color);
     background: var(--accent);
+
+    height: 37px;
+    padding: 1px;
   }
 
   .title-bar {
@@ -135,5 +193,36 @@
 
   .btn-close:hover {
     background: #bf616a;
+  }
+
+  .enable-border {
+      border-bottom: 2px solid var(--primary-color);
+  }
+
+  .items {
+      padding: 10px 15px 10px 15px;
+      width: fit-content;
+  }
+
+  .add-item {
+      padding: 10px 15px 10px 15px;
+  }
+
+  .add-item:hover {
+      background: var(--hover-color);
+  }
+
+  .items:hover {
+      background: var(--hover-color);
+  }
+
+  .close-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-color);
+  }
+
+  .close-btn:hover {
+      cursor: pointer;
   }
 </style>
