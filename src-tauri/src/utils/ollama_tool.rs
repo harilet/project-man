@@ -79,7 +79,6 @@ fn collect_dir_entries(
             continue;
         }
 
-        let relative = path.strip_prefix(root).unwrap_or(&path);
         let indent = "  ".repeat(depth as usize);
 
         if path.is_dir() {

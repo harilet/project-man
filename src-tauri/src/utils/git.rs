@@ -1,5 +1,4 @@
 use git2::{DiffFormat, DiffOptions, Repository};
-use std::fs;
 use std::{error::Error, path::Path};
 
 #[derive(Clone, serde::Serialize, Debug)]
@@ -309,37 +308,6 @@ pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn 
     }
 
     Ok(tree_list)
-}
-
-pub(crate) fn get_staged_diff(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
-
-    let mut diff_opts = DiffOptions::new();
-    let old_tree = repo.head()?.peel_to_tree()?;
-    let mut diff_data: Vec<String> = vec![];
-
-    let diff =
-        repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?;
-
-    diff.print(DiffFormat::Patch, |_d, _, line| {
-        let c_line = format!(
-            "{}{}",
-            line.origin().to_string(),
-            String::from_utf8_lossy(line.content())
-        );
-        diff_data.push(c_line);
-        true
-    })?;
-
-    Ok(diff_data)
 }
 
 pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Error>> {
