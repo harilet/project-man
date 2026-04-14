@@ -8,7 +8,11 @@ use std::{
 use tauri::{AppHandle, Emitter};
 mod utils;
 
-static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+pub static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+
+pub fn get_app_handle() -> &'static AppHandle {
+    APP_HANDLE.get().expect("APP_HANDLE not initialized")
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

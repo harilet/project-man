@@ -66,6 +66,18 @@
                 serverLive = false;
             }
         });
+
+        listen("tool-execution", function (data: any) {
+            let message: any = data.payload;
+            console.log("tool",message);
+            message = {
+                role: "system",
+                content: message['tool']+": "+message['data'],
+                tool_calls: [],
+                thinking: null,
+            };
+            chat = [...chat, message];
+        });
     });
 
     function getChanges(file: string) {
