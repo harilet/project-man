@@ -9,6 +9,53 @@ use tauri::Url;
 use crate::utils::db;
 use crate::utils::ollama_tool;
 
+fn split_long_messages(messages: Vec<ChatMessage>) -> Vec<ChatMessage> {
+    const MAX_LENGTH: usize = 1000;
+    const OVERLAP: usize = 100;
+
+    let mut result = Vec::new();
+
+    for message in messages {
+        let content = message.content.clone();
+        let total_chunk_count = content.len() / (MAX_LENGTH - OVERLAP);
+
+        if content.len() <= MAX_LENGTH {
+            result.push(message);
+            continue;
+        } else {
+            // Split the content into chunks with overlap
+            let mut start = 0;
+
+            while start < content.len() {
+                let end = (start + MAX_LENGTH).min(content.len());
+                let chunk = content[start..end].to_string();
+
+                let mut split_message = message.clone();
+                split_message.content = format!(
+                    "Chunk {}of{}\n{}",
+                    end / (MAX_LENGTH - OVERLAP),
+                    total_chunk_count,
+                    chunk
+                );
+                result.push(split_message);
+
+                // Move start position with overlap, but ensure we make progress
+                if end >= content.len() {
+                    break;
+                }
+                start = end.saturating_sub(OVERLAP);
+
+                // Prevent infinite loop if overlap is too large
+                if start <= start.saturating_sub(OVERLAP) && end < content.len() {
+                    start = end;
+                }
+            }
+        }
+    }
+
+    result
+}
+
 #[derive(Clone, serde::Serialize, Debug)]
 struct ModelData {
     name: String,
@@ -66,13 +113,17 @@ pub(crate) async fn send_message(
 
     let ollama = Ollama::from_url(Url::parse(&ollama_server)?);
 
-    let response = Coordinator::new(ollama, ollama_model, history)
+    // Split long messages in both history and request
+    let split_history = split_long_messages(history);
+    let split_request = split_long_messages(request);
+
+    let response = Coordinator::new(ollama, ollama_model, split_history)
         .add_tool(ollama_tool::read_repo_file)
         .add_tool(ollama_tool::list_dir)
         .add_tool(ollama_tool::search_code)
         .add_tool(ollama_tool::read_multiple_files)
         .add_tool(ollama_tool::get_staged_diff)
-        .chat(request)
+        .chat(split_request)
         .await?;
 
     Ok(response)

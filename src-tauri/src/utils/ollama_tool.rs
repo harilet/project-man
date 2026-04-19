@@ -6,41 +6,62 @@ use tauri::Emitter;
 /// Read the contents of a file in the repository. Use this to understand what changed.
 ///
 /// * file_path - The relative path to the file from the repository root (e.g. "src/main.rs")
+/// * repo_location - The absolute location of the repo
 #[ollama_rs::function]
 pub(crate) async fn read_repo_file(
     file_path: String,
+    repo_location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-    // Emit tool execution event to frontend
-    if let Some(handle) = APP_HANDLE.get() {
-        let _ = handle.emit(
-            "tool-execution",
-            serde_json::json!({
-                "tool": "read_repo_file",
-                "data": file_path
-            }),
-        );
-    }
     // Safety: only allow relative paths — prevent escaping the repo
     if file_path.contains("..") || file_path.starts_with('/') {
+        // Emit tool execution event to frontend
+        if let Some(handle) = APP_HANDLE.get() {
+            let _ = handle.emit(
+                "tool-execution",
+                serde_json::json!({
+                    "tool_name": "read_repo_file",
+                    "tool_input": file_path,
+                    "tool_output": "Only relative paths within the repository are allowed"
+                }),
+            );
+        }
         return Err("Only relative paths within the repository are allowed".into());
     }
 
     let output = Command::new("git")
+        .current_dir(repo_location)
         .args(["show", &format!("HEAD:{}", file_path)])
         .output()?;
 
     if !output.status.success() {
         // Fall back to reading from the working tree
-        let content = std::fs::read_to_string(&file_path)
-            .map_err(|e| format!("Could not read file '{}': {}", file_path, e))?;
+        let content = match std::fs::read_to_string(&file_path)
+                .map_err(|e| format!("Could not read file '{}': {}", file_path, e)) {
+                Ok(data) => data,
+                Err(e) => {
+                    // Emit completion event
+                    if let Some(handle) = APP_HANDLE.get() {
+                        let _ = handle.emit(
+                            "tool-execution",
+                            serde_json::json!({
+                                "tool_name": "read_repo_file",
+                                "tool_input": file_path,
+                                "tool_output": e
+                            }),
+                        );
+                    }
+                    "".to_string()
+                },
+            };
 
         // Emit completion event
         if let Some(handle) = APP_HANDLE.get() {
             let _ = handle.emit(
                 "tool-execution",
                 serde_json::json!({
-                    "tool": "read_repo_file",
-                    "data": content,
+                    "tool_name": "read_repo_file",
+                    "tool_input": file_path,
+                    "tool_output": content
                 }),
             );
         }
@@ -55,8 +76,9 @@ pub(crate) async fn read_repo_file(
         let _ = handle.emit(
             "tool-execution",
             serde_json::json!({
-                "tool": "read_repo_file",
-                "data": file_path,
+                "tool_name": "read_repo_file",
+                "tool_input": file_path,
+                "tool_output": result
             }),
         );
     }
@@ -67,7 +89,7 @@ pub(crate) async fn read_repo_file(
 /// List files and directories inside a path in the repository.
 /// Returns a tree-like text listing. Use "." for the project root.
 ///
-/// * dir_path - Relative directory path (e.g. "src" or ".")
+/// * dir_path - Absolute directory path (Project location + file path)
 /// * depth - How many levels deep to list (default 2, max 5)
 #[ollama_rs::function]
 pub(crate) async fn list_dir(
@@ -76,38 +98,35 @@ pub(crate) async fn list_dir(
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("trying to list dir: {}", dir_path);
 
-    // Emit tool execution event to frontend
-    if let Some(handle) = APP_HANDLE.get() {
-        let _ = handle.emit(
-            "tool-execution",
-            serde_json::json!({
-                "tool": "list_dir",
-                "data": dir_path,
-            }),
-        );
-    }
-
-    if dir_path.contains("..") || dir_path.starts_with('/') {
-        return Err("Only relative paths within the repository are allowed".into());
-    }
-
     let depth = depth.unwrap_or(2).min(5);
     let base = std::path::Path::new(&dir_path);
 
     if !base.is_dir() {
+        // Emit tool execution event to frontend
+        if let Some(handle) = APP_HANDLE.get() {
+            let _ = handle.emit(
+                "tool-execution",
+                serde_json::json!({
+                    "tool_name": "list_dir",
+                    "tool_input": dir_path,
+                    "tool_output": format!("'{}' is not a directory", dir_path)
+                }),
+            );
+        }
         return Err(format!("'{}' is not a directory", dir_path).into());
     }
 
     let mut output = String::new();
     collect_dir_entries(base, base, 0, depth, &mut output);
 
-    // Emit completion event
+    // Emit tool execution event to frontend
     if let Some(handle) = APP_HANDLE.get() {
         let _ = handle.emit(
             "tool-execution",
             serde_json::json!({
-                "tool": "list_dir",
-                "data": dir_path,
+                "tool_name": "list_dir",
+                "tool_input": dir_path,
+                "tool_output": output
             }),
         );
     }
@@ -166,14 +185,6 @@ pub(crate) async fn search_code(
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("searching code for: {}", query);
 
-    // Emit tool execution event to frontend
-    if let Some(handle) = APP_HANDLE.get() {
-        let _ = handle.emit("tool-execution", serde_json::json!({
-            "tool": "search_code",
-            "data": format!("{}\n{:#?}\n{:#?}",query,glob.clone(),case_sensitive,),
-        }));
-    }
-
     let mut cmd = std::process::Command::new("rg");
     cmd.arg("--line-number")
         .arg("--with-filename")
@@ -197,6 +208,17 @@ pub(crate) async fn search_code(
     let stdout = String::from_utf8(output.stdout)?;
 
     if stdout.is_empty() {
+        // Emit tool execution event to frontend
+        if let Some(handle) = APP_HANDLE.get() {
+            let _ = handle.emit(
+                "tool-execution",
+                serde_json::json!({
+                    "tool_name": "search_code",
+                    "tool_input": format!("{}::{:#?}::{:#?}",query,glob.clone(),case_sensitive,),
+                    "tool_output": format!("No matches found for '{}'", query)
+                }),
+            );
+        }
         return Ok(format!("No matches found for '{}'", query));
     }
 
@@ -214,13 +236,14 @@ pub(crate) async fn search_code(
         truncated
     };
 
-    // Emit completion event
+    // Emit tool execution event to frontend
     if let Some(handle) = APP_HANDLE.get() {
         let _ = handle.emit(
             "tool-execution",
             serde_json::json!({
-                "tool": "search_code",
-                "data": total,
+                "tool_name": "search_code",
+                "tool_input": format!("{}::{:#?}::{:#?}",query,glob.clone(),case_sensitive,),
+                "tool_output": result
             }),
         );
     }
@@ -237,17 +260,6 @@ pub(crate) async fn read_multiple_files(
     file_paths: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("trying to read files: {}", file_paths);
-
-    // Emit tool execution event to frontend
-    if let Some(handle) = APP_HANDLE.get() {
-        let _ = handle.emit(
-            "tool-execution",
-            serde_json::json!({
-                "tool": "read_multiple_files",
-                "data": file_paths
-            }),
-        );
-    }
 
     let paths: Vec<&str> = file_paths.split(',').map(str::trim).collect();
     let mut result = String::new();
@@ -281,13 +293,14 @@ pub(crate) async fn read_multiple_files(
         result.push_str("\n\n");
     }
 
-    // Emit completion event
+    // Emit tool execution event to frontend
     if let Some(handle) = APP_HANDLE.get() {
         let _ = handle.emit(
             "tool-execution",
             serde_json::json!({
-                "tool": "read_multiple_files",
-                "data": file_paths,
+                "tool_name": "read_multiple_files",
+                "tool_input": file_paths,
+                "tool_output": result
             }),
         );
     }
@@ -305,44 +318,23 @@ pub(crate) async fn read_multiple_files(
 pub(crate) async fn get_staged_diff(
     location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    let diff = match git::get_all_staged_diff(location.clone()) {
+        Ok(data) => data,
+        Err(e) => {
+            format!("error: {}", e)
+        }
+    };
+
     // Emit tool execution event to frontend
     if let Some(handle) = APP_HANDLE.get() {
         let _ = handle.emit(
             "tool-execution",
             serde_json::json!({
-                "tool": "get_staged_diff",
-                "data": location.clone()
+                "tool_name": "get_staged_diff",
+                "tool_input": location.clone(),
+                "tool_output": diff
             }),
         );
     }
-
-    let diff = match git::get_all_staged_diff(location.clone()) {
-        Ok(data) => {
-            // Emit completion event
-            if let Some(handle) = APP_HANDLE.get() {
-                let _ = handle.emit(
-                    "tool-execution",
-                    serde_json::json!({
-                        "tool": "get_staged_diff",
-                        "data": location,
-                    }),
-                );
-            }
-            data
-        }
-        Err(e) => {
-            // Emit error event
-            if let Some(handle) = APP_HANDLE.get() {
-                let _ = handle.emit(
-                    "tool-execution",
-                    serde_json::json!({
-                        "tool": "get_staged_diff",
-                        "data": e.to_string()
-                    }),
-                );
-            }
-            format!("error: {}", e)
-        }
-    };
     Ok(diff)
 }

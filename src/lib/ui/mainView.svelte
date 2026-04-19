@@ -71,8 +71,8 @@
             let message: any = data.payload;
             console.log("tool",message);
             message = {
-                role: "system",
-                content: message['tool']+": "+message['data'],
+                role: "tool",
+                content: message,
                 tool_calls: [],
                 thinking: null,
             };

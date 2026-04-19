@@ -280,7 +280,7 @@ pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn 
     let output = Command::new("tree")
         .arg("--gitignore")
         .arg("-I")
-        .arg("target|node_modules|.git|build")
+        .arg("target|node_modules|.git|build|vendor")
         .arg(&location)
         .output()?;
 
@@ -303,7 +303,12 @@ pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn 
             .trim();
 
         if !parsed_line.is_empty() {
-            tree_list.push(parsed_line.to_string());
+            let mut result = parsed_line.replace('│', "|");
+            result = result.replace('├', "|-");
+            result = result.replace('─', "-");
+            result = result.replace('└', "|_");
+            result = result.replace('\u{a0}', " ");
+            tree_list.push(result);
         }
     }
 

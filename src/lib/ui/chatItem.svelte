@@ -8,16 +8,7 @@
   }
 
   function getToolOutput(tool_output: any) {
-    let toolOutput: any[] = [];
-    tool_output = "[" + tool_output.replaceAll("\n", ",") + "]";
-    console.log(tool_output);
-    let data = JSON.parse(tool_output);
-    console.log(data);
-    data.forEach((element: any) => {
-      toolOutput = [...toolOutput, element];
-    });
-    console.log(toolOutput);
-    return toolOutput;
+    return tool_output;
   }
 
   function printFileChangeLine(line: any) {
@@ -66,18 +57,19 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    style="width: calc(100% - 10px); padding: 5px;"
+    style="width: calc(100% - 12px); padding: 5px;"
     class="text-wrap-wrap hover full-border chat-item"
     on:click={(_) => toogleExpanded()}
   >
-    <pre>Tool {historyItem["content"]["tool_name"]} called
+    <pre>{historyItem["content"]["tool_name"]}
 {historyItem["content"]["tool_input"]}</pre>
     {#if expanded}
-      {#each getToolOutput(historyItem["content"]["tool_output"]) as line}
+        <pre>{historyItem["content"]["tool_output"]}</pre>
+      <!-- {#each getToolOutput(historyItem["content"]["tool_output"]) as line}
         <pre
           style="background-color: {getChangeLineColor(line)};"
           class="m-0">{printFileChangeLine(line)}</pre>
-      {/each}
+      {/each} -->
     {/if}
   </div>
 {:else if historyItem["role"] === "system"}
