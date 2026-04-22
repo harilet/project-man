@@ -133,7 +133,6 @@ ${project_tree.join("\n")}
                     thinking: null,
                 };
                 chat = [...chat, message];
-                console.log(chat);
             }
 
             message = {
@@ -144,6 +143,8 @@ ${project_tree.join("\n")}
             };
             chat = [...chat, message];
             userInput = "";
+
+            console.log(chat);
 
             invoke("send_message", {
                 message: [message],

@@ -281,6 +281,8 @@ pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn 
         .arg("--gitignore")
         .arg("-I")
         .arg("target|node_modules|.git|build|vendor")
+        .arg("-L")
+        .arg("3")
         .arg(&location)
         .output()?;
 
