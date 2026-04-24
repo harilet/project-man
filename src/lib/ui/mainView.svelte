@@ -22,12 +22,14 @@
     let userInput = "";
 
     let llmSettingDialog: HTMLDialogElement;
+    let logDialog: HTMLDialogElement;
 
     let view = "chat";
 
     let isOpenSavedMessages = false;
 
     let serverLive = false;
+    let error: any[] = [];
 
     $: {
         if (currentProject != "add" && currentProject != "") {
@@ -58,6 +60,18 @@
             }
         });
 
+        logDialog.addEventListener("click", function (event) {
+            var rect = logDialog.getBoundingClientRect();
+            var isInDialog =
+                rect.top <= event.clientY &&
+                event.clientY <= rect.top + rect.height &&
+                rect.left <= event.clientX &&
+                event.clientX <= rect.left + rect.width;
+            if (!isInDialog) {
+                logDialog.close();
+            }
+        });
+
         listen("ollama-server-status", function (data: any) {
             let message: string = data.payload;
             if (message == "live") {
@@ -69,7 +83,7 @@
 
         listen("tool-execution", function (data: any) {
             let message: any = data.payload;
-            console.log("tool",message);
+            console.log("tool", message);
             message = {
                 role: "tool",
                 content: message,
@@ -77,6 +91,11 @@
                 thinking: null,
             };
             chat = [...chat, message];
+        });
+
+        listen("app-error", function (data: any) {
+            let message: string = data.payload;
+            error = [...error, message];
         });
     });
 
@@ -129,6 +148,25 @@ ${project_tree.join("\n")}
 - Prefer read_multiple_files over repeated read_repo_file calls
 - Search before reading: use search_code to find where something is defined or used
 - Never guess file paths; verify them with list_dir or search_code first";
+
+You are in Caveman Mode. Respond like caveman — efficient, no fluff.
+
+RULES:
+- Drop articles (a, an, the) from English prose
+- No pleasantries. "Sure, I'd be happy to help!" = dead.
+- No hedging. "It might be worth considering" = extinct.
+- No filler preamble. Get to point immediately.
+- Short sentences. Subject + verb + object. Done.
+- Technical terms kept exact. "Polymorphism" stay "polymorphism."
+- Code blocks written normally — caveman not stupid.
+- Git commits, PR descriptions, error message quotes — write normal.
+- When explanation needed: compress ruthlessly. Cut 70%+ of words. Keep 100% of meaning.
+
+EXAMPLE:
+❌ "The reason your component is re-rendering is likely because you're creating a new object reference on each render cycle."
+✅ "New object ref each render. Inline prop = new ref = re-render. Wrap in useMemo."
+
+Brain still big. Mouth now small. Caveman efficient.
 `,
                     thinking: null,
                 };
@@ -218,6 +256,14 @@ ${project_tree.join("\n")}
         }
     }
 
+    function openLogDialog() {
+        if (logDialog.open) {
+            logDialog.close();
+        } else {
+            logDialog.showModal();
+        }
+    }
+
     function changeView(viewChange: string) {
         view = viewChange;
     }
@@ -265,6 +311,16 @@ ${project_tree.join("\n")}
     <LlmSetting bind:selectedModel />
 </dialog>
 
+<dialog bind:this={logDialog} on:close>
+    <div style="color: var(--text-color)">
+        {#each error as errorMessage}
+            <div style="padding: 5px;" class="full-border">
+                {errorMessage}
+            </div>
+        {/each}
+    </div>
+</dialog>
+
 <div class="flex flex-row w-100 h-100">
     <div class="h-100 right-border flex flex-column" style="width: 200px;">
         <button
@@ -275,6 +331,12 @@ ${project_tree.join("\n")}
             class="branch-name hover btn"
             on:click={(_) => changeView("git")}>git</button
         >
+        <div style="margin-top: auto;">
+            <button
+                class="branch-name hover btn"
+                on:click={(_) => openLogDialog()}>Log</button
+            >
+        </div>
     </div>
     <div
         class="h-100"

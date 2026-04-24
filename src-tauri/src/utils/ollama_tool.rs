@@ -134,7 +134,7 @@ pub(crate) async fn list_dir(
     Ok(output)
 }
 
-fn collect_dir_entries(
+pub(crate) fn collect_dir_entries(
     dir: &std::path::Path,
     root: &std::path::Path,
     depth: u32,

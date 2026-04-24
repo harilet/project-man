@@ -1,5 +1,6 @@
 use git2::{DiffFormat, DiffOptions, Repository};
 use std::{error::Error, path::Path};
+use crate::utils::ollama_tool;
 
 #[derive(Clone, serde::Serialize, Debug)]
 struct ChangeLine {
@@ -275,46 +276,14 @@ pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Bo
 }
 
 pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    use std::process::Command;
+    let mut outputs = vec![];
+    let mut output = String::new();
+    let depth = 1;
+    let base = std::path::Path::new(&location);
+    ollama_tool::collect_dir_entries(base, base, 0, depth, &mut output);
+    outputs.push(output);
 
-    let output = Command::new("tree")
-        .arg("--gitignore")
-        .arg("-I")
-        .arg("target|node_modules|.git|build|vendor")
-        .arg("-L")
-        .arg("3")
-        .arg(&location)
-        .output()?;
-
-    if !output.status.success() {
-        return Err(format!("tree command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
-    }
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let mut tree_list = vec![];
-
-    for line in stdout.lines() {
-        // Skip the header line and empty lines
-        if line.starts_with(&location) || line.is_empty() || line.contains("directories") {
-            continue;
-        }
-
-        // Parse the tree output line
-        let parsed_line = line
-            .trim_start_matches(|c| c == '│' || c == '├' || c == '─' || c == '└')
-            .trim();
-
-        if !parsed_line.is_empty() {
-            let mut result = parsed_line.replace('│', "|");
-            result = result.replace('├', "|-");
-            result = result.replace('─', "-");
-            result = result.replace('└', "|_");
-            result = result.replace('\u{a0}', " ");
-            tree_list.push(result);
-        }
-    }
-
-    Ok(tree_list)
+    Ok(outputs)
 }
 
 pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Error>> {
