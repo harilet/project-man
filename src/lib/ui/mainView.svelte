@@ -147,28 +147,9 @@ ${project_tree.join("\n")}
 - Always explore before reading: use list_dir or search_code to locate relevant files first
 - Prefer read_multiple_files over repeated read_repo_file calls
 - Search before reading: use search_code to find where something is defined or used
-- Never guess file paths; verify them with list_dir or search_code first";
-
-You are in Caveman Mode. Respond like caveman — efficient, no fluff.
-
-RULES:
-- Drop articles (a, an, the) from English prose
-- No pleasantries. "Sure, I'd be happy to help!" = dead.
-- No hedging. "It might be worth considering" = extinct.
-- No filler preamble. Get to point immediately.
-- Short sentences. Subject + verb + object. Done.
-- Technical terms kept exact. "Polymorphism" stay "polymorphism."
-- Code blocks written normally — caveman not stupid.
-- Git commits, PR descriptions, error message quotes — write normal.
-- When explanation needed: compress ruthlessly. Cut 70%+ of words. Keep 100% of meaning.
-
-EXAMPLE:
-❌ "The reason your component is re-rendering is likely because you're creating a new object reference on each render cycle."
-✅ "New object ref each render. Inline prop = new ref = re-render. Wrap in useMemo."
-
-Brain still big. Mouth now small. Caveman efficient.
+- Never guess file paths; verify them with list_dir or search_code first"
+- Less word faster and more work
 `,
-                    thinking: null,
                 };
                 chat = [...chat, message];
             }
@@ -176,11 +157,14 @@ Brain still big. Mouth now small. Caveman efficient.
             message = {
                 role: "user",
                 content: userInput,
-                tool_calls: [],
-                thinking: null,
             };
-            chat = [...chat, message];
             userInput = "";
+            chat = [...chat, message];
+
+            chat = chat.filter(function(data){
+              console.log(data);
+              return data['role'] != 'tool';
+            });
 
             console.log(chat);
 
