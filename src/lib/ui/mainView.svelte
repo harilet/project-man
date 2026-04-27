@@ -161,7 +161,7 @@ ${project_tree.join("\n")}
             userInput = "";
             chat = [...chat, message];
 
-            chat = chat.filter(function(data){
+            let chatToSend = chat.filter(function(data){
               console.log(data);
               return data['role'] != 'tool';
             });
@@ -170,7 +170,7 @@ ${project_tree.join("\n")}
 
             invoke("send_message", {
                 message: [message],
-                history: chat,
+                history: chatToSend,
             }).then(function (data: any) {
                 chat = [...chat, data];
                 console.log(chat);
