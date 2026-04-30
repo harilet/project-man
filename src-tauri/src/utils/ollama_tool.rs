@@ -24,6 +24,8 @@ pub(crate) async fn read_repo_file(
                     "tool_output": "Only relative paths within the repository are allowed"
                 }),
             );
+            // Also emit error to app-error event
+            let _ = handle.emit("app-error", "Only relative paths within the repository are allowed".to_string());
         }
         return Err("Only relative paths within the repository are allowed".into());
     }
@@ -46,9 +48,11 @@ pub(crate) async fn read_repo_file(
                             serde_json::json!({
                                 "tool_name": "read_repo_file",
                                 "tool_input": file_path,
-                                "tool_output": e
+                                "tool_output": e.to_string()
                             }),
                         );
+                        // Also emit error to app-error event
+                        let _ = handle.emit("app-error", e.to_string());
                     }
                     "".to_string()
                 },
@@ -112,6 +116,8 @@ pub(crate) async fn list_dir(
                     "tool_output": format!("'{}' is not a directory", dir_path)
                 }),
             );
+            // Also emit error to app-error event
+            let _ = handle.emit("app-error", format!("'{}' is not a directory", dir_path));
         }
         return Err(format!("'{}' is not a directory", dir_path).into());
     }
@@ -203,7 +209,14 @@ pub(crate) async fn search_code(
 
     let output = cmd
         .output()
-        .map_err(|e| format!("Failed to run ripgrep: {}. Is 'rg' installed?", e))?;
+        .map_err(|e| {
+            let error_msg = format!("Failed to run ripgrep: {}. Is 'rg' installed?", e);
+            // Emit error to app-error event
+            if let Some(handle) = APP_HANDLE.get() {
+                let _ = handle.emit("app-error", error_msg.clone());
+            }
+            error_msg
+        })?;
 
     let stdout = String::from_utf8(output.stdout)?;
 
@@ -217,6 +230,11 @@ pub(crate) async fn search_code(
                     "tool_input": format!("{}::{:#?}::{:#?}",query,glob.clone(),case_sensitive,),
                     "tool_output": format!("No matches found for '{}'", query)
                 }),
+            );
+
+            let _ = handle.emit(
+                "app-error",
+                format!("No matches found for '{}'", query),
             );
         }
         return Ok(format!("No matches found for '{}'", query));
@@ -270,6 +288,14 @@ pub(crate) async fn read_multiple_files(
                 "=== {} ===\nERROR: Only relative paths within the repository are allowed\n\n",
                 file_path
             ));
+            if let Some(handle) = APP_HANDLE.get() {
+            let _ = handle.emit(
+                "app-error",
+                format!(
+                    "=== {} ===\nERROR: Only relative paths within the repository are allowed\n\n",
+                    file_path
+                ));
+            }
             continue;
         }
 
@@ -286,7 +312,15 @@ pub(crate) async fn read_multiple_files(
             }
             _ => match std::fs::read_to_string(file_path) {
                 Ok(content) => result.push_str(&content),
-                Err(e) => result.push_str(&format!("ERROR: Could not read file: {}", e)),
+                Err(e) => {
+                    if let Some(handle) = APP_HANDLE.get() {
+                    let _ = handle.emit(
+                        "app-error",
+                        format!("ERROR: Could not read file: {}", e)
+                    );
+                    }
+                    result.push_str(&format!("ERROR: Could not read file: {}", e))
+                },
             },
         }
 
