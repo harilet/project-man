@@ -1,6 +1,5 @@
 use git2::{DiffFormat, DiffOptions, Repository};
 use std::{error::Error, path::Path};
-use crate::utils::ollama_tool;
 
 #[derive(Clone, serde::Serialize, Debug)]
 struct ChangeLine {
@@ -273,17 +272,6 @@ pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Bo
     let commit = head.peel_to_commit()?;
     repo.reset_default(Some(commit.as_object()), &[path])?;
     Ok(())
-}
-
-pub(crate) fn get_project_tree(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut outputs = vec![];
-    let mut output = String::new();
-    let depth = 1;
-    let base = std::path::Path::new(&location);
-    ollama_tool::collect_dir_entries(base, base, 0, depth, &mut output);
-    outputs.push(output);
-
-    Ok(outputs)
 }
 
 pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Error>> {

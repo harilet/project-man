@@ -123,18 +123,11 @@
             let message: any;
             console.log("Sending message...");
             if (chat.length == 0) {
-                let project_tree: string[] = await invoke("get_project_tree", {
-                    location: currentProject,
-                });
-
                 message = {
                     role: "system",
                     content: `You are a coding assistant with access to a local codebase.
 ## Project git repository location
 ${currentProject}
-
-## Project structure
-${project_tree.join("\n")}
 
 ## Available tools
 - read_repo_file
@@ -423,7 +416,7 @@ ${project_tree.join("\n")}
             </button>
         </div>
         <div class="flex" style="height: calc(100% - 26px); ">
-            <div style={isOpenSavedMessages ? "width: 60%;" : "width: 100%"}>
+            <div style="{isOpenSavedMessages ? "width: 60%" : "width: 100%"}; display:flex; flex-direction: column;">
                 <div class="main-scrollbar chat-response">
                     {#if chat.length > 0}
                         {#each chat as historyItem}
@@ -431,8 +424,8 @@ ${project_tree.join("\n")}
                         {/each}
                     {/if}
                 </div>
-                <form class="w-100 flex top-border" style="height: 40px;">
-                    <input class="w-100 input" bind:value={userInput} />
+                <form class="w-100 flex top-border" style="flex-grow: 1;">
+                    <textarea class="w-100 input" bind:value={userInput}> </textarea>
                     <button class="btn" on:click={(_) => sendMessage()}
                         >Send</button
                     >
@@ -482,7 +475,7 @@ ${project_tree.join("\n")}
     }
 
     .chat-response {
-        height: calc(100% - 40px);
+        height: 90%;
     }
 
     .server-status-indicator {

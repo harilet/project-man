@@ -42,7 +42,6 @@ pub fn run() {
             get_saved_messages,
             add_saved_messages,
             delete_saved_message,
-            get_project_tree,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -221,8 +220,6 @@ async fn send_message(
     message: Vec<ChatMessage>,
     history: Vec<ChatMessage>,
 ) -> ChatMessage {
-    println!("message: {:#?}", message);
-    println!("history: {:#?}", history);
     match utils::l_ollama::send_message(message, history).await {
         Ok(response) => {
             println!("{:#?}", response.message);
@@ -230,7 +227,7 @@ async fn send_message(
         }
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
-            println!("{:#?}", e);
+            println!("{:#?}", e.to_string());
             return ChatMessage::new(MessageRole::User, "".to_string());
         }
     }
@@ -267,20 +264,6 @@ async fn delete_saved_message(app: AppHandle, message: String) -> Vec<String> {
         Err(e) => {
             app_clone.emit("app-error", e.to_string()).unwrap();
             ["{}".to_string()].to_vec()
-        }
-    }
-}
-
-#[tauri::command]
-async fn get_project_tree(app: AppHandle, location: String) -> Vec<String> {
-    match utils::git::get_project_tree(location) {
-        Ok(tree) => {
-            println!("{:#?}", tree);
-            tree
-        }
-        Err(e) => {
-            app.emit("app-error", e.to_string()).unwrap();
-            vec![]
         }
     }
 }
