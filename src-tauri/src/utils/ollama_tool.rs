@@ -21,7 +21,7 @@ fn read_file_from_repo(repo_location: &str, file_path: &str) -> Result<String, B
         .map_err(|e| format!("Failed to get blob for file '{}': {}", file_path, e))?;
     let content = String::from_utf8(blob.content().to_vec())
         .map_err(|e| format!("File '{}' is not valid UTF-8: {}", file_path, e))?;
-    
+
     Ok(content)
 }
 
@@ -66,7 +66,7 @@ pub(crate) async fn read_repo_file(
             }),
         );
     }
-    
+
     Ok(content)
 }
 
@@ -174,20 +174,20 @@ pub(crate) async fn search_code(
     // Use current directory as the search root
     let search_root = std::env::current_dir()
         .map_err(|e| format!("Failed to get current directory: {}", e))?;
-    
+
     // Collect search options
     let case_sensitive = case_sensitive.unwrap_or(false);
     let glob_pattern = glob.clone();
 
     // Vector to store all matches
     let mut matches = Vec::new();
-    
+
     // Define directories to ignore
     let ignored_dirs = [
-        "target", "vendor", "node_modules", ".git", ".vscode", ".idea", 
+        "target", "vendor", "node_modules", ".git", ".vscode", ".idea",
         "dist", "build", "out", ".next", ".nuxt", "coverage", "tmp", "temp"
     ];
-    
+
     // Walk the directory tree
     for entry in WalkDir::new(search_root)
         .into_iter()
@@ -226,23 +226,23 @@ pub(crate) async fn search_code(
                 true
             }
         }) {
-        
+
         // Skip binary files and large files
         if is_binary_file(entry.path()) {
             continue;
         }
-        
+
         // Check file size limit (similar to ripgrep's --max-filesize)
         if let Ok(metadata) = std::fs::metadata(entry.path()) {
             if metadata.len() > 1_000_000 { // 1MB limit
                 continue;
             }
         }
-        
+
         // Read and search file content
         if let Ok(content) = std::fs::read_to_string(entry.path()) {
             let file_path = entry.path().to_string_lossy();
-            
+
             // Search for query in content
             for (line_number, line) in content.lines().enumerate() {
                 let found = if case_sensitive {
@@ -250,10 +250,10 @@ pub(crate) async fn search_code(
                 } else {
                     line.to_lowercase().contains(&query.to_lowercase())
                 };
-                
+
                 if found {
                     matches.push(format!("{}:{}:{}", file_path, line_number + 1, line));
-                    
+
                     // Limit total matches to prevent overwhelming the context
                     if matches.len() >= 1000 {
                         break;
@@ -261,7 +261,7 @@ pub(crate) async fn search_code(
                 }
             }
         }
-        
+
         // Early termination if we have too many matches
         if matches.len() >= 1000 {
             break;
@@ -337,9 +337,11 @@ fn is_binary_file(path: &std::path::Path) -> bool {
 /// Returns each file's content separated by headers, or an error per file if unreadable.
 ///
 /// * file_paths - Comma-separated list of relative file paths, e.g. "src/main.rs,src/lib.rs"
+/// * location - Absolute path to the root of the git repository
 #[ollama_rs::function]
 pub(crate) async fn read_multiple_files(
     file_paths: String,
+    location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("trying to read files: {}", file_paths);
 
@@ -366,7 +368,7 @@ pub(crate) async fn read_multiple_files(
         result.push_str(&format!("=== {} ===\n", file_path));
 
         // Try git HEAD first using git2, fall back to working tree
-        match read_file_from_repo(".", file_path) {
+        match read_file_from_repo(location.as_str(), file_path) {
             Ok(content) => result.push_str(&content),
             Err(_) => match std::fs::read_to_string(file_path) {
                 Ok(content) => result.push_str(&content),
@@ -374,10 +376,10 @@ pub(crate) async fn read_multiple_files(
                     if let Some(handle) = APP_HANDLE.get() {
                     let _ = handle.emit(
                         "app-error",
-                        format!("ERROR: Could not read file: {}", e)
+                        format!("{}\nERROR: Could not read file: {}",file_path, e)
                     );
                     }
-                    result.push_str(&format!("ERROR: Could not read file: {}", e))
+                    result.push_str(&format!("{}\nERROR: Could not read file: {}",file_path, e))
                 },
             },
         }
