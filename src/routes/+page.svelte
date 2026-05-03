@@ -91,7 +91,7 @@
 
 <ErrorToast bind:message={error} />
 
-<div class="main-container flex flex-column">
+<div class="main-container flex flex-column" style="height: calc(100% - 39px);">
     <div
         class="flex flex-row w-100 h-100"
         class:hidden={currentProject !== "add"}

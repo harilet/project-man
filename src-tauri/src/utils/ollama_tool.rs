@@ -1,7 +1,29 @@
 use crate::utils::git;
 use crate::APP_HANDLE;
-use std::process::Command;
+use git2::Repository;
 use tauri::Emitter;
+use walkdir::WalkDir;
+use glob::Pattern;
+use std::fs::File;
+use std::io::Read;
+
+/// Helper function to read a file from the git repository at HEAD
+fn read_file_from_repo(repo_location: &str, file_path: &str) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    let repo = Repository::open(repo_location)
+        .map_err(|e| format!("Failed to open repository at {}: {}", repo_location, e))?;
+    let revspec = repo.revparse_single("HEAD")
+        .map_err(|e| format!("Failed to parse HEAD: {}", e))?;
+    let tree = revspec.peel_to_tree()
+        .map_err(|e| format!("Failed to get tree from HEAD: {}", e))?;
+    let entry = tree.get_path(std::path::Path::new(file_path))
+        .map_err(|e| format!("File '{}' not found in repository: {}", file_path, e))?;
+    let blob = repo.find_blob(entry.id())
+        .map_err(|e| format!("Failed to get blob for file '{}': {}", file_path, e))?;
+    let content = String::from_utf8(blob.content().to_vec())
+        .map_err(|e| format!("File '{}' is not valid UTF-8: {}", file_path, e))?;
+    
+    Ok(content)
+}
 
 /// Read the contents of a file in the repository. Use this to understand what changed.
 ///
@@ -30,50 +52,8 @@ pub(crate) async fn read_repo_file(
         return Err("Only relative paths within the repository are allowed".into());
     }
 
-    let output = Command::new("git")
-        .current_dir(repo_location)
-        .args(["show", &format!("HEAD:{}", file_path)])
-        .output()?;
-
-    if !output.status.success() {
-        // Fall back to reading from the working tree
-        let content = match std::fs::read_to_string(&file_path)
-                .map_err(|e| format!("Could not read file '{}': {}", file_path, e)) {
-                Ok(data) => data,
-                Err(e) => {
-                    // Emit completion event
-                    if let Some(handle) = APP_HANDLE.get() {
-                        let _ = handle.emit(
-                            "tool-execution",
-                            serde_json::json!({
-                                "tool_name": "read_repo_file",
-                                "tool_input": file_path,
-                                "tool_output": e.to_string()
-                            }),
-                        );
-                        // Also emit error to app-error event
-                        let _ = handle.emit("app-error", e.to_string());
-                    }
-                    "".to_string()
-                },
-            };
-
-        // Emit completion event
-        if let Some(handle) = APP_HANDLE.get() {
-            let _ = handle.emit(
-                "tool-execution",
-                serde_json::json!({
-                    "tool_name": "read_repo_file",
-                    "tool_input": file_path,
-                    "tool_output": content
-                }),
-            );
-        }
-
-        return Ok(content);
-    }
-
-    let result = String::from_utf8(output.stdout)?;
+    // Open the repository and get the file content from HEAD
+    let content = read_file_from_repo(&repo_location, &file_path)?;
 
     // Emit completion event
     if let Some(handle) = APP_HANDLE.get() {
@@ -82,12 +62,12 @@ pub(crate) async fn read_repo_file(
             serde_json::json!({
                 "tool_name": "read_repo_file",
                 "tool_input": file_path,
-                "tool_output": result
+                "tool_output": content
             }),
         );
     }
-
-    Ok(result)
+    
+    Ok(content)
 }
 
 /// List files and directories inside a path in the repository.
@@ -191,36 +171,105 @@ pub(crate) async fn search_code(
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("searching code for: {}", query);
 
-    let mut cmd = std::process::Command::new("rg");
-    cmd.arg("--line-number")
-        .arg("--with-filename")
-        .arg("--color=never")
-        .arg("--max-filesize=1M");
+    // Use current directory as the search root
+    let search_root = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?;
+    
+    // Collect search options
+    let case_sensitive = case_sensitive.unwrap_or(false);
+    let glob_pattern = glob.clone();
 
-    if !case_sensitive.unwrap_or(false) {
-        cmd.arg("--ignore-case");
-    }
-
-    if let Some(ref g) = glob {
-        cmd.arg("--glob").arg(g);
-    }
-
-    cmd.arg(&query);
-
-    let output = cmd
-        .output()
-        .map_err(|e| {
-            let error_msg = format!("Failed to run ripgrep: {}. Is 'rg' installed?", e);
-            // Emit error to app-error event
-            if let Some(handle) = APP_HANDLE.get() {
-                let _ = handle.emit("app-error", error_msg.clone());
+    // Vector to store all matches
+    let mut matches = Vec::new();
+    
+    // Define directories to ignore
+    let ignored_dirs = [
+        "target", "vendor", "node_modules", ".git", ".vscode", ".idea", 
+        "dist", "build", "out", ".next", ".nuxt", "coverage", "tmp", "temp"
+    ];
+    
+    // Walk the directory tree
+    for entry in WalkDir::new(search_root)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            // Skip directories that should be ignored
+            !e.path()
+                .components()
+                .any(|component| {
+                    component.as_os_str().to_str()
+                        .map(|s| ignored_dirs.contains(&s))
+                        .unwrap_or(false)
+                })
+        })
+        .filter(|e| {
+            // Skip hidden files and directories
+            !e.file_name()
+                .to_str()
+                .map(|s| s.starts_with('.'))
+                .unwrap_or(false)
+        })
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            // Apply glob filter if provided
+            if let Some(ref pattern_str) = glob_pattern {
+                // Use glob crate for proper pattern matching
+                if let Ok(pattern) = Pattern::new(pattern_str) {
+                    let path_str = e.path().to_string_lossy();
+                    pattern.matches(&path_str)
+                } else {
+                    // If pattern is invalid, include the file
+                    true
+                }
+            } else {
+                // Include all files by default
+                true
             }
-            error_msg
-        })?;
+        }) {
+        
+        // Skip binary files and large files
+        if is_binary_file(entry.path()) {
+            continue;
+        }
+        
+        // Check file size limit (similar to ripgrep's --max-filesize)
+        if let Ok(metadata) = std::fs::metadata(entry.path()) {
+            if metadata.len() > 1_000_000 { // 1MB limit
+                continue;
+            }
+        }
+        
+        // Read and search file content
+        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+            let file_path = entry.path().to_string_lossy();
+            
+            // Search for query in content
+            for (line_number, line) in content.lines().enumerate() {
+                let found = if case_sensitive {
+                    line.contains(&query)
+                } else {
+                    line.to_lowercase().contains(&query.to_lowercase())
+                };
+                
+                if found {
+                    matches.push(format!("{}:{}:{}", file_path, line_number + 1, line));
+                    
+                    // Limit total matches to prevent overwhelming the context
+                    if matches.len() >= 1000 {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Early termination if we have too many matches
+        if matches.len() >= 1000 {
+            break;
+        }
+    }
 
-    let stdout = String::from_utf8(output.stdout)?;
-
-    if stdout.is_empty() {
+    if matches.is_empty() {
+        let error_msg = format!("No matches found for '{}'", query);
         // Emit tool execution event to frontend
         if let Some(handle) = APP_HANDLE.get() {
             let _ = handle.emit(
@@ -228,21 +277,21 @@ pub(crate) async fn search_code(
                 serde_json::json!({
                     "tool_name": "search_code",
                     "tool_input": format!("{}::{:#?}::{:#?}",query,glob.clone(),case_sensitive,),
-                    "tool_output": format!("No matches found for '{}'", query)
+                    "tool_output": error_msg.clone()
                 }),
             );
 
             let _ = handle.emit(
                 "app-error",
-                format!("No matches found for '{}'", query),
+                error_msg.clone(),
             );
         }
-        return Ok(format!("No matches found for '{}'", query));
+        return Ok(error_msg);
     }
 
-    // Truncate to 100 matches to avoid flooding context
-    let truncated: String = stdout.lines().take(100).collect::<Vec<_>>().join("\n");
-    let total = stdout.lines().count();
+    // Truncate to 100 matches to avoid flooding context (same behavior as original)
+    let truncated: String = matches.iter().take(100).cloned().collect::<Vec<_>>().join("\n");
+    let total = matches.len();
 
     let result = if total > 100 {
         format!(
@@ -267,6 +316,21 @@ pub(crate) async fn search_code(
     }
 
     Ok(result)
+}
+
+/// Helper function to determine if a file is binary
+fn is_binary_file(path: &std::path::Path) -> bool {
+    // Try to read the first few KB of the file to check for null bytes
+    // Binary files often contain null bytes, while text files typically don't
+    if let Ok(mut file) = File::open(path) {
+        let mut buffer = [0; 1024]; // Read first 1KB
+        if let Ok(bytes_read) = file.read(&mut buffer) {
+            // Check for null bytes which are common in binary files
+            return buffer[..bytes_read].contains(&0);
+        }
+    }
+    // If we can't read the file, assume it's not binary
+    false
 }
 
 /// Read several files in one call. Prefer this over multiple read_repo_file calls.
@@ -301,16 +365,10 @@ pub(crate) async fn read_multiple_files(
 
         result.push_str(&format!("=== {} ===\n", file_path));
 
-        // Try git HEAD first, fall back to working tree (same logic as read_repo_file)
-        let output = std::process::Command::new("git")
-            .args(["show", &format!("HEAD:{}", file_path)])
-            .output();
-
-        match output {
-            Ok(out) if out.status.success() => {
-                result.push_str(&String::from_utf8(out.stdout)?);
-            }
-            _ => match std::fs::read_to_string(file_path) {
+        // Try git HEAD first using git2, fall back to working tree
+        match read_file_from_repo(".", file_path) {
+            Ok(content) => result.push_str(&content),
+            Err(_) => match std::fs::read_to_string(file_path) {
                 Ok(content) => result.push_str(&content),
                 Err(e) => {
                     if let Some(handle) = APP_HANDLE.get() {

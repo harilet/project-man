@@ -3620,6 +3620,7 @@ name = "project-man"
 version = "0.1.0"
 dependencies = [
  "git2",
+ "glob",
  "libsql",
  "ollama-rs",
  "serde",
@@ -3629,6 +3630,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
  "tauri-plugin-store",
+ "walkdir",
 ]
 
 [[package]]
