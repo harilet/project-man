@@ -6,46 +6,6 @@
   function toogleExpanded() {
     expanded = !expanded;
   }
-
-  function getToolOutput(tool_output: any) {
-    return tool_output;
-  }
-
-  function printFileChangeLine(line: any) {
-    if (line["from_no"] == line["to_no"]) {
-      return (
-        line["change_type"] + ": " + line["from_no"] + ": " + line["content"]
-      );
-    } else if (line["from_no"] == "") {
-      return (
-        line["change_type"] + ": " + line["to_no"] + ": " + line["content"]
-      );
-    } else if (line["to_no"] == "") {
-      return (
-        line["change_type"] + ": " + line["from_no"] + ": " + line["content"]
-      );
-    } else {
-      return (
-        line["change_type"] +
-        ": " +
-        line["from_no"] +
-        "->" +
-        line["to_no"] +
-        ": " +
-        line["content"]
-      );
-    }
-  }
-
-  function getChangeLineColor(line: any) {
-    if (line["change_type"] == "+") {
-      return "#00be7e4d";
-    } else if (line["change_type"] == "-") {
-      return "#ff1d5733";
-    } else {
-      return "";
-    }
-  }
 </script>
 
 {#if historyItem["role"] === "user"}
@@ -61,25 +21,21 @@
     class="text-wrap-wrap hover full-border chat-item"
     on:click={(_) => toogleExpanded()}
   >
-    <pre>{historyItem["content"]["tool_name"]}
-{historyItem["content"]["tool_input"]}</pre>
+    <pre>{historyItem["name"]}</pre>
     {#if expanded}
-        <pre>{historyItem["content"]["tool_output"]}</pre>
-      <!-- {#each getToolOutput(historyItem["content"]["tool_output"]) as line}
-        <pre
-          style="background-color: {getChangeLineColor(line)};"
-          class="m-0">{printFileChangeLine(line)}</pre>
-      {/each} -->
+      <pre>{historyItem["content"]}</pre>
     {/if}
   </div>
 {:else if historyItem["role"] === "system"}
   <pre
     class="text-wrap-wrap hover full-border chat-item"
-    style="width: calc(100% - 12px); padding: 5px;">{historyItem["content"]}</pre>
-{:else}
-  <pre class="text-wrap-wrap hover w-90 full-border chat-item" style="padding: 5px;">{historyItem[
+    style="width: calc(100% - 12px); padding: 5px;">{historyItem[
       "content"
     ]}</pre>
+{:else}
+  <pre
+    class="text-wrap-wrap hover w-90 full-border chat-item"
+    style="padding: 5px;">{historyItem["content"]}</pre>
 {/if}
 
 <style>
