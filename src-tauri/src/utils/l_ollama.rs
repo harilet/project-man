@@ -126,5 +126,7 @@ pub(crate) async fn send_message(
         .chat(split_request)
         .await?;
 
+    println!("{:#?}", response);
+
     Ok(response)
 }
