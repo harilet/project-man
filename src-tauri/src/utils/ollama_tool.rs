@@ -163,17 +163,18 @@ pub(crate) fn collect_dir_entries(
 /// * query - Regex or literal string to search for
 /// * glob - Optional file glob filter, e.g. "*.rs" or "src/**/*.ts"
 /// * case_sensitive - Whether to match case-sensitively (default false)
+/// * repo_location - The absolute location of the repo
 #[ollama_rs::function]
 pub(crate) async fn search_code(
     query: String,
     glob: Option<String>,
     case_sensitive: Option<bool>,
+    repo_location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
     println!("searching code for: {}", query);
 
-    // Use current directory as the search root
-    let search_root = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?;
+    // Use the specified repository location as the search root
+    let search_root = std::path::Path::new(&repo_location);
 
     // Collect search options
     let case_sensitive = case_sensitive.unwrap_or(false);
@@ -185,7 +186,7 @@ pub(crate) async fn search_code(
     // Define directories to ignore
     let ignored_dirs = [
         "target", "vendor", "node_modules", ".git", ".vscode", ".idea",
-        "dist", "build", "out", ".next", ".nuxt", "coverage", "tmp", "temp"
+        "dist", "build", "out", ".next", ".nuxt", "coverage", "tmp", "temp", ".dart_tool"
     ];
 
     // Walk the directory tree

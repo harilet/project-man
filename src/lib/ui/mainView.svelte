@@ -128,7 +128,7 @@
 ## Project git repository location
 ${currentProject}
 
-## Available tools
+## Only use the following tools to interact with the codebase. Do not use any other tools or commands that directly interact with the file system or git. Always use these tools to interact with the codebase and git.
 - read_repo_file
 - list_dir
 - search_code
