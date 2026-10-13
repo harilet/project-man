@@ -47,36 +47,93 @@
 </script>
 
 <div class="h-100 flex flex-column">
-    <div class="text-color setting-item-session">LLM Settings</div>
-    <div class="main-scrollbar">
+    <div class="dialog-head">
+        <span class="label">01 / Settings</span>
+        <span class="dialog-title">LLM Settings</span>
+    </div>
+    <div class="main-scrollbar settings-scroll">
         <div class="setting-item-session">
-            <div class="text-color">Model</div>
+            <div class="label field-label">Model</div>
             <div>
                 <ModelDropDown bind:selectedModel />
             </div>
         </div>
 
         <div class="setting-item-session">
-            <div class="text-color">Server Url</div>
+            <div class="label field-label">Server Url</div>
             <form class="w-100 flex">
                 <input
-                    class="w-100 input full-border"
-                    style="padding: 5px;"
+                    class="w-100 input setting-input"
                     bind:value={ollama_server}
                 />
             </form>
         </div>
 
-        <input type="color" id="favcolor" name="favcolor" bind:value={color} on:change={()=>colorChange()} />
+        <div class="setting-item-session">
+            <div class="label field-label">Accent Color</div>
+            <input
+                class="color-input full-border"
+                type="color"
+                id="favcolor"
+                name="favcolor"
+                bind:value={color}
+                on:change={() => colorChange()}
+            />
+        </div>
 
-        <button class="btn" on:click={(_) => saveOllamaServerSettings()}
-            >Save</button
+        <button
+            class="btn btn-primary btn-block"
+            on:click={(_) => saveOllamaServerSettings()}>Save Settings</button
         >
     </div>
 </div>
 
 <style>
+    .dialog-head {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 22px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .dialog-title {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-color);
+    }
+
+    .settings-scroll {
+        padding: 22px;
+        flex: 1;
+        min-height: 0;
+    }
+
     .setting-item-session {
-        margin-bottom: 25px;
+        margin-bottom: 26px;
+    }
+
+    .field-label {
+        margin-bottom: 8px;
+    }
+
+    .setting-input {
+        padding: 11px 14px;
+        border: 1px solid var(--border-strong);
+        background: var(--background-color);
+        transition: border-color 0.15s ease;
+    }
+
+    .setting-input:focus {
+        border-color: var(--primary-color);
+    }
+
+    .color-input {
+        width: 64px;
+        height: 38px;
+        padding: 0;
+        background: var(--background-color);
+        cursor: pointer;
     }
 </style>

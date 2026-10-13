@@ -269,9 +269,10 @@ ${currentProject}
 </dialog>
 
 <dialog bind:this={logDialog} on:close>
-  <div style="color: var(--text-color)">
+  <div class="dialog-pad">
+    <div class="label dialog-title">Application Logs</div>
     {#each error as errorMessage}
-      <div style="padding: 5px;" class="full-border">
+      <div class="log-item full-border">
         {errorMessage}
       </div>
     {/each}
@@ -279,17 +280,20 @@ ${currentProject}
 </dialog>
 
 <div class="flex flex-row w-100 h-100">
-  <div class="h-100 right-border flex flex-column" style="width: 200px;">
-    <button class="branch-name hover btn" on:click={(_) => changeView("chat")}
-      >chat</button
+  <div class="h-100 right-border flex flex-column sidebar" style="width: 190px;">
+    <div class="sidebar-head label">Workspace</div>
+    <button
+      class="branch-name {view == 'chat' ? 'active' : ''}"
+      on:click={(_) => changeView("chat")}
+      >Chat</button
     >
-    <button class="branch-name hover btn" on:click={(_) => changeView("git")}
-      >git</button
+    <button
+      class="branch-name {view == 'git' ? 'active' : ''}"
+      on:click={(_) => changeView("git")}
+      >Git</button
     >
     <div style="margin-top: auto;">
-      <button class="branch-name hover btn" on:click={(_) => openLogDialog()}
-        >Log</button
-      >
+      <button class="branch-name" on:click={(_) => openLogDialog()}>Logs</button>
     </div>
   </div>
   <div
@@ -299,20 +303,24 @@ ${currentProject}
       : 'none'}; width: -webkit-fill-available;"
   >
     <div class="h-100 flex">
-      <div class="w-50 h-100">
-        <div class="h-50 main-scrollbar right-border bottom-border">
-          Staged Files
+      <div class="w-50 h-100 flex flex-column">
+        <div class="panel-head flex flex-justify-between">
+          <span class="label">Staged</span>
+          <span class="label">{stagedFiles.length}</span>
+        </div>
+        <div class="main-scrollbar right-border" style="flex: 1; min-height: 0;">
           {#each stagedFiles as file}
             <button
               on:click={(_) => getChanges(file)}
               class="commit-file-path hover"
             >
-              <div>
+              <div class="file-name">
                 {file}
               </div>
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
+                class="file-action"
                 on:click={function (e) {
                   removeFileFromIndex(e, file);
                 }}
@@ -322,19 +330,23 @@ ${currentProject}
             </button>
           {/each}
         </div>
-        <div class="h-50 main-scrollbar right-border">
-          Unstaged Files
+        <div class="panel-head flex flex-justify-between top-border">
+          <span class="label">Unstaged</span>
+          <span class="label">{unStagedFiles.length}</span>
+        </div>
+        <div class="main-scrollbar right-border" style="flex: 1; min-height: 0;">
           {#each unStagedFiles as file}
             <button
               on:click={(_) => getUnstagedChanges(file)}
               class="commit-file-path hover"
             >
-              <div>
+              <div class="file-name">
                 {file}
               </div>
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
+                class="file-action"
                 on:click={function (e) {
                   addFile(e, file);
                 }}
@@ -345,12 +357,18 @@ ${currentProject}
           {/each}
         </div>
       </div>
-      <div class="w-50 h-100 right-border bottom-border main-scrollbar">
-        <div>
+      <div class="w-50 h-100 right-border bottom-border flex flex-column">
+        <div class="panel-head flex flex-justify-between">
+          <span class="label">Diff</span>
+          <span class="label">Changes</span>
+        </div>
+        <div class="main-scrollbar" style="flex: 1; min-height: 0;">
           {#each fileDiff.split("\n") as line}
             <pre
               style="background-color: {getChangeLineColor(line)};"
-              class="hover m-0 text-wrap-wrap">{printFileChangeLine(line)}</pre>
+              class="hover m-0 text-wrap-wrap diff-line">{printFileChangeLine(
+                  line,
+                )}</pre>
           {/each}
         </div>
       </div>
@@ -365,8 +383,9 @@ ${currentProject}
     <div
       class="chat-header bottom-border flex flex-justify-between flex-align-center"
     >
-      <button class="btn flex flex-row" on:click={(_) => openSettingDialog()}>
-        <div>
+      <button class="btn chat-header-btn" on:click={(_) => openSettingDialog()}>
+        <span class="label">Model</span>
+        <div class="chat-model">
           {#if selectedModel == ""}
             LLM Settings
           {:else}
@@ -377,15 +396,18 @@ ${currentProject}
         <span
           style="background-color: {serverLive
             ? 'var(--primary-color)'
-            : 'red'};"
+            : '#d84a4a'};"
           class="server-status-indicator"
         ></span>
       </button>
-      <button class="btn" on:click={(_) => openSavedMessages()}>
+      <button
+        class="btn chat-header-btn {isOpenSavedMessages ? 'active' : ''}"
+        on:click={(_) => openSavedMessages()}
+      >
         Saved Messages
       </button>
     </div>
-    <div class="flex" style="height: calc(100% - 26px); ">
+    <div class="flex" style="height: calc(100% - 46px); ">
       <div
         style="{isOpenSavedMessages
           ? 'width: 60%'
@@ -398,14 +420,20 @@ ${currentProject}
             {/each}
           {/if}
         </div>
-        <form class="w-100 flex top-border" style="flex-grow: 1;">
-          <textarea class="w-100 input" bind:value={userInput}> </textarea>
-          <button class="btn" on:click={(_) => sendMessage()}>Send</button>
+        <form class="composer w-100 flex top-border">
+          <textarea
+            class="w-100 input composer-input"
+            placeholder="Type a message..."
+            bind:value={userInput}
+          > </textarea>
+          <button class="btn btn-primary composer-btn" on:click={(_) => sendMessage()}
+            >Send</button
+          >
         </form>
       </div>
       <div
         class="left-border"
-        style="height: calc(100% - 24px); display: {isOpenSavedMessages
+        style="height: 100%; display: {isOpenSavedMessages
           ? 'flex'
           : 'none'}; width: 40%"
       >
@@ -416,46 +444,175 @@ ${currentProject}
 </div>
 
 <style>
+  .sidebar {
+    background: var(--surface-color);
+  }
+
+  .sidebar-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
   .branch-name {
-    padding: 10px 5px;
-    margin: 0px 5px;
-    border-radius: 5px;
+    padding: 11px 16px;
+    margin: 0px;
+    border-radius: 0px;
     cursor: pointer;
     border: none;
+    border-left: 2px solid transparent;
     width: -webkit-fill-available;
     background: none;
-    color: var(--text-color);
+    color: var(--muted-color);
     text-align: start;
     text-overflow: ellipsis;
     overflow: hidden;
     display: flex;
     align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .branch-name:hover {
+    background: var(--hover-color);
+    color: var(--text-color);
+  }
+
+  .branch-name.active {
+    color: var(--text-color);
+    border-left-color: var(--primary-color);
+    background: var(--hover-color);
+  }
+
+  .panel-head {
+    padding: 11px 14px;
+    background: var(--surface-color);
   }
 
   .commit-file-path {
-    padding: 6px;
+    padding: 9px 14px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 0px;
     background: transparent;
     color: var(--text-color);
     border: none;
+    border-bottom: 1px solid var(--border-color);
     width: -webkit-fill-available;
     text-align: start;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    transition: background 0.15s ease;
+  }
+
+  .file-name {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: left;
+  }
+
+  .file-action {
+    flex-shrink: 0;
+    color: var(--muted-color);
+    display: flex;
+    align-items: center;
+  }
+
+  .file-action:hover {
+    color: var(--primary-color);
+  }
+
+  .file-action :global(svg) {
+    height: 15px;
+    width: 15px;
+  }
+
+  .diff-line {
+    font-size: 12px;
+    padding: 0 14px;
   }
 
   .chat-response {
-    height: 90%;
+    flex: 1;
+    min-height: 0;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chat-header {
+    padding: 8px 14px;
+    gap: 10px;
+    background: var(--surface-color);
+  }
+
+  .chat-header-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chat-header-btn.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .chat-model {
+    color: var(--text-color);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 12px;
   }
 
   .server-status-indicator {
     border-radius: 100%;
-    height: 15px;
-    width: 15px;
+    height: 8px;
+    width: 8px;
     display: inline-block;
-    margin-right: 5px;
-    margin-left: 5px;
+  }
+
+  .composer {
+    flex: 0 0 auto;
+    background: var(--surface-color);
+  }
+
+  .composer-input {
+    padding: 14px 16px;
+    min-height: 84px;
+    font-size: 13px;
+  }
+
+  .composer-btn {
+    flex-shrink: 0;
+    border-left: none;
+  }
+
+  .dialog-pad {
+    padding: 22px;
+    height: 100%;
+    overflow: auto;
+    color: var(--text-color);
+  }
+
+  .dialog-title {
+    display: block;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .log-item {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    background: var(--background-color);
   }
 </style>

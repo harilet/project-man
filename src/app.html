@@ -8,23 +8,21 @@
         %sveltekit.head%
         <style>
             :root {
-                --primary-color: #00d492;
-                --text-color: #ffffff;
-                --hover-color: color-mix(
-                    in oklab,
-                    var(--primary-color) 10%,
-                    transparent
-                );
-                --background-color: color-mix(
-                    in oklab,
-                    var(--primary-color) 5%,
-                    #0b0e14
-                );
-                --border-color: color-mix(
-                    in oklab,
-                    var(--primary-color) 50%,
-                    transparent
-                );
+                --primary-color: #7b8cff;
+                --text-color: #edeef0;
+                --muted-color: #7c828e;
+                --background-color: #0a0b0f;
+                --surface-color: #111319;
+                --hover-color: rgba(255, 255, 255, 0.06);
+                --border-color: #24272f;
+                --border-strong: #3b3f4a;
+                --font-mono: "SFMono-Regular", "JetBrains Mono", "Roboto Mono",
+                    ui-monospace, Menlo, Consolas, "Liberation Mono",
+                    monospace;
+            }
+
+            * {
+                box-sizing: border-box;
             }
 
             body {
@@ -36,33 +34,43 @@
 
                 color: var(--text-color);
 
-                font-family: Rubik;
+                font-family: var(--font-mono);
                 font-optical-sizing: auto;
                 font-weight: 400;
                 font-style: normal;
-                font-size: small;
+                font-size: 13px;
+                line-height: 1.5;
+                letter-spacing: 0.01em;
                 border: 1px solid var(--border-color);
-                border-radius: 5px;
+                border-radius: 0px;
+                overflow: hidden;
+            }
+
+            ::selection {
+                background: var(--primary-color);
+                color: #0a0b0f;
             }
 
             dialog {
-                border-radius: 5px;
+                border-radius: 0px;
                 border-width: 1px;
-                transition: all 2s;
+                transition: all 0.3s ease;
                 width: 50%;
                 z-index: 2;
                 height: 75%;
-                padding: 20px;
-                background: var(--background-color);
-                border: 1px solid var(--border-color);
+                padding: 0px;
+                background: var(--surface-color);
+                border: 1px solid var(--border-strong);
+                color: var(--text-color);
+                box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
             }
 
             dialog::backdrop {
                 background: linear-gradient(
-                    rgba(0, 0, 0, 0.4),
-                    rgba(0, 0, 0, 0.7)
+                    rgba(2, 3, 5, 0.6),
+                    rgba(2, 3, 5, 0.85)
                 );
-                animation: fade-in 1s;
+                animation: fade-in 0.3s;
             }
 
             progress {

@@ -43,15 +43,21 @@
 <style>
     .toast {
         position: fixed;
-        bottom: 10px;
-        right: 15px;
+        bottom: 14px;
+        right: 18px;
+        z-index: 10;
     }
 
     .toast-item {
-        padding: 10px 20px;
-        background-color: var(--primary-color);
-        color: var(--background-color);
-        border-radius: 4px;
-        margin-top: 5px;
+        padding: 12px 18px;
+        background-color: var(--surface-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-strong);
+        border-left: 2px solid var(--primary-color);
+        border-radius: 0px;
+        margin-top: 6px;
+        font-size: 12px;
+        max-width: 360px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
     }
 </style>

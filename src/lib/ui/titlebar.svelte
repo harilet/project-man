@@ -45,6 +45,25 @@
 </script>
 
 <div data-tauri-drag-region class="title-bar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        height="20"
+        width="20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linejoin="round"
+      >
+        <path d="M12 3 L21.5 20 L3 20 Z" />
+        <path d="M12 9 L17 20 L7 20 Z" />
+      </svg>
+    </span>
+    <span class="brand-name">PROJECT<span class="accent">·</span>MAN</span>
+  </div>
+
     <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="tabs">
       {#each tabItems as item}
@@ -56,7 +75,7 @@
                   : ''}"
               on:click={(_) => setItem(item.key)}
           >
-              <div>
+              <div class="tab-label">
                   {item.name.split("/").at(-1)}
               </div>
               {#if showCloseBth}
@@ -148,81 +167,161 @@
     fill: var(--text-color);
   }
 
+  .title-bar {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    height: 100%;
+    background: var(--background-color);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    border-right: 1px solid var(--border-color);
+    color: var(--text-color);
+    flex-shrink: 0;
+  }
+
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border-strong);
+    color: var(--primary-color);
+    background: var(--surface-color);
+  }
+
+  .brand-name {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+  }
+
   .window-controls {
     display: flex;
+    align-items: stretch;
+    border-left: 1px solid var(--border-color);
   }
 
   .tabs {
     display: flex;
-    color: var(--primary-color);
-    background: var(--accent);
-
-    height: 37px;
-    padding: 1px;
+    align-items: center;
+    color: var(--muted-color);
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0 12px;
   }
 
-  .title-bar {
-    display: flex;
-    justify-content: space-between;
-    height: 100%;
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .hvrBgDark {
-    width: 42px;
+    width: 46px;
     border: none;
     background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    fill: var(--primary-color);
+    fill: var(--muted-color);
+    transition: background 0.15s ease, fill 0.15s ease;
   }
 
   .hvrBgDark:hover {
-    background: #8585853b;
+    background: var(--hover-color);
+    fill: var(--text-color);
   }
 
   .btn-close {
-    width: 45px;
-    background: transparent;
+    width: 50px;
     border: none;
+    border-left: 1px solid var(--border-color);
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    fill: var(--primary-color);
+    fill: var(--muted-color);
+    transition: background 0.15s ease, fill 0.15s ease;
   }
 
   .btn-close:hover {
-    background: #bf616a;
+    background: #d84a4a;
+    fill: #ffffff;
   }
 
   .enable-border {
-      border-bottom: 2px solid var(--primary-color);
+    background: var(--hover-color);
+    border-color: var(--border-strong);
+    color: var(--text-color);
   }
 
   .items {
-      padding: 10px 15px 10px 15px;
-      width: fit-content;
-  }
-
-  .add-item {
-      padding: 10px 15px 10px 15px;
-  }
-
-  .add-item:hover {
-      background: var(--hover-color);
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px 6px 14px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease,
+      color 0.15s ease;
   }
 
   .items:hover {
-      background: var(--hover-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+  }
+
+  .add-item {
+    padding: 6px 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--muted-color);
+    transition: background 0.15s ease, border-color 0.15s ease,
+      color 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .add-item:hover {
+    background: var(--hover-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
   }
 
   .close-btn {
-      border: none;
-      background: transparent;
-      color: var(--text-color);
+    border: none;
+    background: transparent;
+    color: var(--muted-color);
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .close-btn :global(svg) {
+    height: 14px;
+    width: 14px;
+    fill: currentColor;
   }
 
   .close-btn:hover {
-      cursor: pointer;
+    cursor: pointer;
+    color: var(--text-color);
+  }
+
+  .add-item :global(svg) {
+    height: 16px;
+    width: 16px;
   }
 </style>

@@ -127,20 +127,29 @@
 
     .saved-messages-header h3 {
         margin: 0;
-        font-size: 14px;
+        font-size: 12px;
         color: var(--text-color);
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
     }
 
     .add-message-btn {
-        padding: 4px 8px;
+        padding: 6px 10px;
         font-size: 11px;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 3px;
+        background-color: transparent;
+        color: var(--text-color);
+        border: 1px solid var(--border-strong);
+        border-radius: 0px;
         cursor: pointer;
         white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .add-message-btn:hover {
+        background: var(--hover-color);
+        border-color: var(--text-color);
     }
 
     .add-message-form {
@@ -151,9 +160,9 @@
 
     .message-input {
         width: 100%;
-        padding: 6px;
-        border: 1px solid var(--border-color);
-        border-radius: 3px;
+        padding: 8px;
+        border: 1px solid var(--border-strong);
+        border-radius: 0px;
         background-color: var(--background-color);
         color: var(--text-color);
         font-family: inherit;
@@ -174,27 +183,37 @@
     }
 
     .cancel-btn {
-        padding: 4px 10px;
+        padding: 6px 10px;
         background-color: transparent;
-        color: var(--text-color);
+        color: var(--muted-color);
         border: 1px solid var(--border-color);
-        border-radius: 3px;
+        border-radius: 0px;
         cursor: pointer;
         font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .cancel-btn:hover {
+        color: var(--text-color);
+        border-color: var(--border-strong);
     }
 
     .save-btn {
-        padding: 4px 10px;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 3px;
+        padding: 6px 10px;
+        background-color: var(--text-color);
+        color: var(--background-color);
+        border: 1px solid var(--text-color);
+        border-radius: 0px;
         cursor: pointer;
         font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
     }
 
     .save-btn:hover {
-        opacity: 0.9;
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
     }
 
     .saved-messages-list {
@@ -207,10 +226,8 @@
 
     .empty-state {
         text-align: center;
-        color: var(--text-color);
-        opacity: 0.6;
+        color: var(--muted-color);
         padding: 15px;
-        font-style: italic;
         font-size: 12px;
     }
 
@@ -219,11 +236,16 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 6px;
-        padding: 8px;
-        background-color: var(--card-background);
+        padding: 10px;
+        background-color: var(--surface-color);
         border: 1px solid var(--border-color);
-        border-radius: 4px;
+        border-radius: 0px;
         min-height: 32px;
+        transition: border-color 0.15s ease;
+    }
+
+    .saved-message-item:hover {
+        border-color: var(--border-strong);
     }
 
     .message-content {
@@ -251,17 +273,14 @@
         background-color: transparent;
         border: none;
         cursor: pointer;
-        color: var(--text-color);
-        opacity: 0.6;
+        color: var(--muted-color);
         flex-shrink: 0;
         min-width: 16px;
         min-height: 16px;
     }
 
     .delete-btn:hover {
-        opacity: 1;
-        background-color: #ff1d5722;
-        border-radius: 2px;
+        color: #d84a4a;
     }
 
     .btn {
