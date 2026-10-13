@@ -10,34 +10,18 @@ struct ChangeLine {
 }
 
 pub(crate) fn get_current_branch_name(location: String) -> Result<String, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let head = repo.head()?;
     Ok(head.shorthand().expect("Empty Branch Name").to_string())
 }
 
 fn get_repo(location: String) -> Result<Repository, Box<dyn Error>> {
-    return Ok(Repository::open(location)?);
+    Ok(Repository::open(location)?)
 }
 
 pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let mut path_list = vec![];
     let mut diff_opts = DiffOptions::new();
@@ -46,7 +30,7 @@ pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn 
     let staged_diff =
         repo.diff_tree_to_index(Some(&old_tree), Some(&repo.index()?), Some(&mut diff_opts))?;
 
-    for diff in staged_diff.deltas().into_iter() {
+    for diff in staged_diff.deltas() {
         path_list.push(
             diff.new_file()
                 .path()
@@ -60,15 +44,7 @@ pub(crate) fn get_staged_files(location: String) -> Result<Vec<String>, Box<dyn 
 }
 
 pub(crate) fn get_unstaged_files(location: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let mut path_list = vec![];
     let mut diff_opts = DiffOptions::new();
@@ -79,7 +55,7 @@ pub(crate) fn get_unstaged_files(location: String) -> Result<Vec<String>, Box<dy
         .include_untracked(true)
         .ignore_whitespace_eol(false);
     let unstaged_diff = repo.diff_index_to_workdir(Some(&repo.index()?), Some(&mut diff_opts))?;
-    for diff in unstaged_diff.deltas().into_iter() {
+    for diff in unstaged_diff.deltas() {
         path_list.push(match diff.new_file().path() {
             Some(path) => match path.to_str() {
                 Some(path_str) => path_str.to_string(),
@@ -96,15 +72,7 @@ pub(crate) fn get_file_diff(
     path: String,
     is_unified: bool,
 ) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let mut diff_opts = DiffOptions::new();
     diff_opts
@@ -124,7 +92,7 @@ pub(crate) fn get_file_diff(
         diff.print(DiffFormat::Patch, |_d, _, line| {
             let c_line = format!(
                 "{}{}",
-                line.origin().to_string(),
+                line.origin(),
                 String::from_utf8_lossy(line.content())
             );
             diff_data.push(c_line);
@@ -144,22 +112,14 @@ pub(crate) fn get_file_diff(
         },
     )?;
 
-    return Ok(diff_data);
+    Ok(diff_data)
 }
 
 pub(crate) fn get_unstaged_file_diff(
     location: String,
     path: String,
 ) -> Result<Vec<String>, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let mut diff_opts = DiffOptions::new();
     diff_opts
@@ -206,7 +166,7 @@ fn format_change_line_item(
             temp_data.from_no = format!("{}", num);
         }
         None => {
-            temp_data.from_no = format!("");
+            temp_data.from_no = String::new();
         }
     }
 
@@ -215,7 +175,7 @@ fn format_change_line_item(
             temp_data.to_no = format!("{}", num);
         }
         None => {
-            temp_data.to_no = format!("",);
+            temp_data.to_no = String::new();
         }
     }
 
@@ -243,15 +203,7 @@ fn format_change_line_item(
 }
 
 pub(crate) fn add_file_index(location: String, path: String) -> Result<(), Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
     let mut index = repo.index()?;
     index.add_path(Path::new(&path))?;
     index.write()?;
@@ -259,15 +211,7 @@ pub(crate) fn add_file_index(location: String, path: String) -> Result<(), Box<d
 }
 
 pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
     let head = repo.head()?;
     let commit = head.peel_to_commit()?;
     repo.reset_default(Some(commit.as_object()), &[path])?;
@@ -275,15 +219,7 @@ pub(crate) fn remove_file_index(location: String, path: String) -> Result<(), Bo
 }
 
 pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Error>> {
-    let repo: Repository;
-    match get_repo(location) {
-        Ok(t_repo) => {
-            repo = t_repo;
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
+    let repo = get_repo(location)?;
 
     let mut diff_opts = DiffOptions::new();
     let old_tree = repo.head()?.peel_to_tree()?;
@@ -295,7 +231,7 @@ pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Er
     diff.print(DiffFormat::Patch, |_d, _, line| {
         let c_line = format!(
             "{}{}",
-            line.origin().to_string(),
+            line.origin(),
             String::from_utf8_lossy(line.content())
         );
         diff_data.push(c_line);

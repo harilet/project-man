@@ -3,24 +3,18 @@
 
     export let message: string[] = [];
 
-    $: visible = false;
+    let visible = false;
 
-    $: {
-        console.log("toasty", message);
-        if (message.length == 1 && message[1] == "") {
+    $: if (message.length > 0) {
+        visible = true;
+
+        setTimeout(() => {
             message.pop();
             message = message;
-        } else if (message.length > 0) {
-            visible = true;
-
-            setTimeout(() => {
-                message.pop();
-                message = message;
-                if (message.length < 1) {
-                    visible = false;
-                }
-            }, 5000);
-        }
+            if (message.length < 1) {
+                visible = false;
+            }
+        }, 5000);
     }
 </script>
 

@@ -11,7 +11,6 @@
 
     onMount(() => {
         invoke("get_saved_messages", {}).then(function (data: any) {
-            console.log(data);
             savesMessages = data;
         });
     });

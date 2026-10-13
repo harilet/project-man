@@ -83,7 +83,6 @@
 
     listen("tool-execution", function (data: any) {
       let message: any = data.payload;
-      console.log("tool", message);
       message = {
         role: "tool",
         content: message["tool_output"],
@@ -120,7 +119,6 @@
   async function sendMessage() {
     if (userInput != "") {
       let message: any;
-      console.log("Sending message...");
       if (chat.length == 0) {
         message = {
           role: "system",
@@ -153,14 +151,11 @@ ${currentProject}
       userInput = "";
       chat = [...chat, message];
 
-      console.log(chat);
-
       invoke("send_message", {
         message: [message],
         history: chat,
       }).then(function (data: any) {
         chat = [...chat, data];
-        console.log(chat);
       });
     }
   }

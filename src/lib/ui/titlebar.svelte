@@ -5,9 +5,7 @@
 
   export let tabItems: any[];
   export let currentTab: string;
-  export let showCloseBth = true;
-
-  export let selectedTab = "manga";
+  export let showCloseBtn = true;
 
   const appWindow = getCurrentWindow();
 
@@ -21,10 +19,6 @@
 
   function onClickClose() {
     appWindow.close();
-  }
-
-  function tabSelect(item: string) {
-    selectedTab = item;
   }
 
   function setItem(key: string) {
@@ -65,7 +59,7 @@
   </div>
 
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="tabs">
+  <div data-tauri-drag-region class="tabs">
       {#each tabItems as item}
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
@@ -78,7 +72,7 @@
               <div class="tab-label">
                   {item.name.split("/").at(-1)}
               </div>
-              {#if showCloseBth}
+              {#if showCloseBtn}
                   <button
                       class="close-btn"
                       on:click={(e) => closeProject(e, item.key)}
@@ -88,7 +82,7 @@
               {/if}
           </div>
       {/each}
-      {#if showCloseBth}
+      {#if showCloseBtn}
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
               on:click={(_) => setItem("add")}

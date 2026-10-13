@@ -21,16 +21,16 @@
     }
   };
 
-  function handleDropdownFocusLoss(relatedTarget: any) {
+  function handleDropdownFocusLoss(event: FocusEvent) {
     if (
-      relatedTarget.relatedTarget instanceof HTMLElement &&
-      relatedTarget.currentTarget.contains(relatedTarget.relatedTarget)
+      event.relatedTarget instanceof HTMLElement &&
+      (event.currentTarget as HTMLElement).contains(event.relatedTarget)
     )
       return;
     isDropdownOpen = false;
   }
 
-  function onOptionCLick(value: string) {
+  function onOptionClick(value: string) {
     selectedModel = value;
     isDropdownOpen = false;
   }
@@ -46,7 +46,7 @@
       {#each allModels as model}
         <li class="flex flex-justify-center">
           <button
-            on:click={(_) => onOptionCLick(model["name"])}
+            on:click={(_) => onOptionClick(model["name"])}
             class="btn w-100 option-item"
           >
             <div class="flex option-tags">

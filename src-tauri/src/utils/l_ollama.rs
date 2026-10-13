@@ -80,17 +80,15 @@ pub(crate) async fn get_all_local_models() -> Result<Vec<String>, Box<dyn Error>
         };
         let context_key = format!("{}.context_length", architecture);
 
-        let context_length = match model_info.model_info.get(&context_key) {
-            Some(context) => match context.as_u64() {
-                Some(num) => num,
-                None => 0,
-            },
-            None => 0,
-        };
+        let context_length = model_info
+            .model_info
+            .get(&context_key)
+            .and_then(|context| context.as_u64())
+            .unwrap_or(0);
 
         let model_data = ModelData {
             name: local_model.name,
-            architecture: architecture,
+            architecture,
             context: format!("{}", context_length),
             capabilities: model_info.capabilities,
         };
@@ -125,8 +123,6 @@ pub(crate) async fn send_message(
         .add_tool(ollama_tool::get_staged_diff)
         .chat(split_request)
         .await?;
-
-    println!("{:#?}", response);
 
     Ok(response)
 }

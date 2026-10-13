@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error, time::SystemTime};
 
 pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
     let db = get_db().await?;
-    if !(dose_table_exists("all_projects".to_string()).await?) {
+    if !(does_table_exists("all_projects".to_string()).await?) {
         db.execute(
             "CREATE TABLE 'all_projects' (
                 'id'	INTEGER NOT NULL UNIQUE,
@@ -17,7 +17,7 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
         .await?;
     }
 
-    if !(dose_table_exists("open_projects".to_string()).await?) {
+    if !(does_table_exists("open_projects".to_string()).await?) {
         db.execute(
             "CREATE TABLE 'open_projects' (
                 'project_id'	INTEGER NOT NULL UNIQUE,
@@ -29,7 +29,7 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
         .await?;
     }
 
-    if !(dose_table_exists("ollama_setting".to_string()).await?) {
+    if !(does_table_exists("ollama_setting".to_string()).await?) {
         db.execute(
             "CREATE TABLE 'ollama_setting' (
                 'name'	TEXT NOT NULL UNIQUE,
@@ -40,7 +40,7 @@ pub(crate) async fn init_db() -> Result<(), Box<dyn Error>> {
         .await?;
     }
 
-    if !(dose_table_exists("saved_messages".to_string()).await?) {
+    if !(does_table_exists("saved_messages".to_string()).await?) {
         db.execute(
             "CREATE TABLE 'saved_messages' (
                 'id'	INTEGER NOT NULL UNIQUE,
@@ -73,20 +73,20 @@ pub(crate) async fn get_recent_projects() -> Result<Vec<String>, Box<dyn Error>>
 
 pub(crate) async fn set_projects(name: String, path: String) -> Result<i64, Box<dyn Error>> {
     let db = get_db().await?;
-    let mut dose_project_exists_row = db
+    let mut project_exists_row = db
         .query(
             "SELECT id, name, path FROM all_projects WHERE path=?1",
             [path.clone()],
         )
         .await?;
-    if let Some(data) = dose_project_exists_row.next().await? {
+    if let Some(data) = project_exists_row.next().await? {
         let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         db.query(
             "UPDATE all_projects SET last_access=?1 WHERE path=?2",
             [now.as_secs().to_string(), path.clone()],
         )
         .await?;
-        return Ok(data.get(0)?);
+        Ok(data.get(0)?)
     } else {
         let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         db.query(
@@ -94,14 +94,14 @@ pub(crate) async fn set_projects(name: String, path: String) -> Result<i64, Box<
             params![name, path.clone(), now.as_secs()],
         )
         .await?;
-        let mut dose_project_exists_row = db
+        let mut project_exists_row = db
             .query(
                 "SELECT id, name, path FROM all_projects WHERE path=?1",
                 [path.clone()],
             )
             .await?;
-        if let Some(data) = dose_project_exists_row.next().await? {
-            return Ok(data.get(0)?);
+        if let Some(data) = project_exists_row.next().await? {
+            Ok(data.get(0)?)
         } else {
             panic!("Can't get created project")
         }
@@ -161,7 +161,7 @@ async fn get_db() -> Result<Connection, Box<dyn Error>> {
     Ok(conn)
 }
 
-async fn dose_table_exists(table_name: String) -> Result<bool, Box<dyn Error>> {
+async fn does_table_exists(table_name: String) -> Result<bool, Box<dyn Error>> {
     let table_exists;
     let db: Connection = get_db().await?;
     let mut result = db

@@ -221,14 +221,11 @@ async fn send_message(
     history: Vec<ChatMessage>,
 ) -> ChatMessage {
     match utils::l_ollama::send_message(message, history).await {
-        Ok(response) => {
-            println!("{:#?}", response.message);
-            return response.message;
-        }
+        Ok(response) => response.message,
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e.to_string());
-            return ChatMessage::new(MessageRole::User, "".to_string());
+            ChatMessage::new(MessageRole::User, "".to_string())
         }
     }
 }

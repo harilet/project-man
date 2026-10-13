@@ -80,8 +80,6 @@ pub(crate) async fn list_dir(
     dir_path: String,
     depth: Option<u32>,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-    println!("trying to list dir: {}", dir_path);
-
     let depth = depth.unwrap_or(2).min(5);
     let base = std::path::Path::new(&dir_path);
 
@@ -103,7 +101,7 @@ pub(crate) async fn list_dir(
     }
 
     let mut output = String::new();
-    collect_dir_entries(base, base, 0, depth, &mut output);
+    collect_dir_entries(base, 0, depth, &mut output);
 
     // Emit tool execution event to frontend
     if let Some(handle) = APP_HANDLE.get() {
@@ -122,7 +120,6 @@ pub(crate) async fn list_dir(
 
 pub(crate) fn collect_dir_entries(
     dir: &std::path::Path,
-    root: &std::path::Path,
     depth: u32,
     max_depth: u32,
     output: &mut String,
@@ -149,7 +146,7 @@ pub(crate) fn collect_dir_entries(
 
         if path.is_dir() {
             output.push_str(&format!("{}{}/\n", indent, name));
-            collect_dir_entries(&path, root, depth + 1, max_depth, output);
+            collect_dir_entries(&path, depth + 1, max_depth, output);
         } else {
             let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
             output.push_str(&format!("{}{} ({} bytes)\n", indent, name, size));
@@ -171,8 +168,6 @@ pub(crate) async fn search_code(
     case_sensitive: Option<bool>,
     repo_location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-    println!("searching code for: {}", query);
-
     // Use the specified repository location as the search root
     let search_root = std::path::Path::new(&repo_location);
 
@@ -344,8 +339,6 @@ pub(crate) async fn read_multiple_files(
     file_paths: String,
     location: String,
 ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-    println!("trying to read files: {}", file_paths);
-
     let paths: Vec<&str> = file_paths.split(',').map(str::trim).collect();
     let mut result = String::new();
 

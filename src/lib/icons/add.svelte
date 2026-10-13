@@ -1,5 +1,5 @@
 <script lang="ts">
-    export let color = "var(--text-color);";
+    export let color = "var(--text-color)";
 </script>
 
 <svg
