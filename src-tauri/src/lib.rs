@@ -305,12 +305,13 @@ fn rename_branch(app: AppHandle, location: String, old_name: String, new_name: S
 }
 
 #[tauri::command]
-fn delete_branch(app: AppHandle, location: String, name: String) {
+fn delete_branch(app: AppHandle, location: String, name: String) -> String {
     match utils::git::delete_branch(location, name) {
-        Ok(_) => {}
+        Ok(message) => message,
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
+            format!("error: {}", e)
         }
     }
 }

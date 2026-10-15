@@ -416,16 +416,52 @@ pub(crate) fn rename_branch(
     Ok(())
 }
 
-pub(crate) fn delete_branch(location: String, name: String) -> Result<(), Box<dyn Error>> {
-    let repo = get_repo(location)?;
+fn find_fallback_branch(repo: &Repository, exclude: &str) -> Option<String> {
+    let branches = repo.branches(Some(git2::BranchType::Local)).ok()?;
+    let mut first: Option<String> = None;
 
-    if current_branch_name(&repo) == Some(name.clone()) {
-        return Err("Cannot delete the branch you are currently on".into());
+    for item in branches {
+        let Ok((branch, _)) = item else { continue };
+        let Some(branch_name) = branch.name().ok().flatten() else {
+            continue;
+        };
+
+        if branch_name == exclude {
+            continue;
+        }
+
+        if branch_name == "main" || branch_name == "master" {
+            return Some(branch_name.to_string());
+        }
+
+        if first.is_none() {
+            first = Some(branch_name.to_string());
+        }
     }
 
+    first
+}
+
+pub(crate) fn delete_branch(location: String, name: String) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location.clone())?;
+
+    if current_branch_name(&repo) != Some(name.clone()) {
+        let mut branch = repo.find_branch(&name, git2::BranchType::Local)?;
+        branch.delete()?;
+        return Ok(format!("Deleted {}", name));
+    }
+
+    let fallback = find_fallback_branch(&repo, &name)
+        .ok_or("Cannot delete the only branch in the repository")?;
+    drop(repo);
+
+    checkout_branch(location.clone(), fallback.clone())?;
+
+    let repo = get_repo(location)?;
     let mut branch = repo.find_branch(&name, git2::BranchType::Local)?;
     branch.delete()?;
-    Ok(())
+
+    Ok(format!("Switched to {} and deleted {}", fallback, name))
 }
 
 pub(crate) fn get_commit_log(

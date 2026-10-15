@@ -29,6 +29,7 @@
 
   $: localBranches = branches.filter((branch) => !branch.is_remote);
   $: remoteBranches = branches.filter((branch) => branch.is_remote);
+  $: deletableBranches = localBranches.filter((branch) => !branch.is_head);
 
   let branchDialog: HTMLDialogElement;
   let branchDialogMode: "create" | "rename" = "create";
@@ -206,20 +207,25 @@
   }
 
   function openDeleteDialog() {
-    if (!currentBranch) return;
-    branchToDelete = currentBranch;
+    if (localBranches.length === 0) return;
+    branchToDelete = deletableBranches[0]?.name ?? currentBranch;
     confirmDialog.showModal();
   }
 
   function confirmDelete() {
+    if (!branchToDelete) return;
+    busy = true;
     invoke("delete_branch", {
       location: currentProject,
       name: branchToDelete,
-    }).then(() => {
-      confirmDialog.close();
-      fileDiff = "";
-      loadAll();
-    });
+    })
+      .then((output: any) => {
+        confirmDialog.close();
+        statusMessage = output || "";
+        fileDiff = "";
+        loadAll();
+      })
+      .finally(() => (busy = false));
   }
 
   function remoteAction(action: "fetch" | "pull" | "push") {
@@ -454,6 +460,14 @@
         <span class="label">History</span>
         <span class="flex flex-align-center history-head-right">
           <span class="label">{commitLog.length} commits</span>
+          <button
+            class="history-close"
+            title="Close history"
+            aria-label="Close history"
+            on:click={() => (showHistory = false)}
+          >
+            <Close />
+          </button>
         </span>
       </div>
       <div class="main-scrollbar history-list">
@@ -520,16 +534,32 @@
       <span class="dialog-title">Are you sure?</span>
     </div>
     <div class="dialog-body">
+      <div class="field">
+        <div class="label field-label">Branch</div>
+        <select class="branch-select dialog-branch-select" bind:value={branchToDelete}>
+          {#each localBranches as branch}
+            <option value={branch.name}
+              >{branch.name}{branch.is_head ? " (current)" : ""}</option
+            >
+          {/each}
+        </select>
+      </div>
       <p class="dialog-note">
         This will permanently delete the branch
         <span class="accent">{branchToDelete}</span>.
+        {#if branchToDelete === currentBranch}
+          It is the current branch, so the app will switch to another branch
+          first.
+        {/if}
       </p>
       <div class="flex dialog-actions">
         <button class="btn btn-ghost w-50" on:click={() => confirmDialog.close()}
           >Cancel</button
         >
-        <button class="btn btn-danger w-50" on:click={confirmDelete}
-          >Delete</button
+        <button
+          class="btn btn-danger w-50"
+          disabled={!branchToDelete}
+          on:click={confirmDelete}>Delete</button
         >
       </div>
     </div>
@@ -831,6 +861,11 @@
     font-size: 13px;
     line-height: 1.6;
     color: var(--text-color);
+  }
+
+  .dialog-branch-select {
+    width: 100%;
+    max-width: none;
   }
 
   .field {
