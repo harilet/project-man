@@ -318,20 +318,26 @@ pub(crate) fn get_branches(location: String) -> Result<Vec<BranchInfo>, Box<dyn 
     let head_name = current_branch_name(&repo);
 
     let mut branches: Vec<BranchInfo> = vec![];
-    for item in repo.branches(Some(git2::BranchType::Local))? {
-        let (branch, _) = item?;
+    for item in repo.branches(None)? {
+        let (branch, branch_type) = item?;
         let name = match branch.name()? {
             Some(name) => name.to_string(),
             None => continue,
         };
+
+        let is_remote = branch_type == git2::BranchType::Remote;
+        if is_remote && name.ends_with("/HEAD") {
+            continue;
+        }
+
         branches.push(BranchInfo {
-            is_head: Some(name.clone()) == head_name,
-            is_remote: false,
+            is_head: !is_remote && Some(name.clone()) == head_name,
+            is_remote,
             name,
         });
     }
 
-    branches.sort_by(|a, b| a.name.cmp(&b.name));
+    branches.sort_by(|a, b| a.is_remote.cmp(&b.is_remote).then(a.name.cmp(&b.name)));
     Ok(branches)
 }
 
@@ -380,6 +386,23 @@ pub(crate) fn checkout_branch(location: String, name: String) -> Result<(), Box<
         None => repo.set_head_detached(object.id())?,
     }
     Ok(())
+}
+
+pub(crate) fn checkout_remote_branch(
+    location: String,
+    name: String,
+) -> Result<String, Box<dyn Error>> {
+    let local_name = name.split('/').skip(1).collect::<Vec<&str>>().join("/");
+    if local_name.is_empty() {
+        return Err("Invalid remote branch name".into());
+    }
+
+    let local_ref = format!("refs/heads/{}", local_name);
+    if run_git(&location, &["show-ref", "--verify", "--quiet", &local_ref]).is_ok() {
+        return run_git(&location, &["checkout", &local_name]);
+    }
+
+    run_git(&location, &["checkout", "-b", &local_name, &name])
 }
 
 pub(crate) fn rename_branch(

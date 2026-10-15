@@ -43,6 +43,7 @@ pub fn run() {
             get_branches,
             create_branch,
             checkout_branch,
+            checkout_remote_branch,
             rename_branch,
             delete_branch,
             get_commit_log,
@@ -285,6 +286,14 @@ fn checkout_branch(app: AppHandle, location: String, name: String) {
 }
 
 #[tauri::command]
+async fn checkout_remote_branch(app: AppHandle, location: String, name: String) -> String {
+    run_remote(app, move || {
+        utils::git::checkout_remote_branch(location, name).map_err(|e| e.to_string())
+    })
+    .await
+}
+
+#[tauri::command]
 fn rename_branch(app: AppHandle, location: String, old_name: String, new_name: String) {
     match utils::git::rename_branch(location, old_name, new_name) {
         Ok(_) => {}
@@ -330,42 +339,44 @@ fn discard_file_changes(app: AppHandle, location: String, path: String) {
 }
 
 #[tauri::command]
-async fn fetch_repo(app: AppHandle, location: String, remote: String) {
+async fn fetch_repo(app: AppHandle, location: String, remote: String) -> String {
     run_remote(app, move || {
         utils::git::fetch(location, remote).map_err(|e| e.to_string())
     })
-    .await;
+    .await
 }
 
 #[tauri::command]
-async fn push_repo(app: AppHandle, location: String, remote: String, branch: String) {
+async fn push_repo(app: AppHandle, location: String, remote: String, branch: String) -> String {
     run_remote(app, move || {
         utils::git::push(location, remote, branch).map_err(|e| e.to_string())
     })
-    .await;
+    .await
 }
 
 #[tauri::command]
-async fn pull_repo(app: AppHandle, location: String, remote: String, branch: String) {
+async fn pull_repo(app: AppHandle, location: String, remote: String, branch: String) -> String {
     run_remote(app, move || {
         utils::git::pull(location, remote, branch).map_err(|e| e.to_string())
     })
-    .await;
+    .await
 }
 
-async fn run_remote<F>(app: AppHandle, operation: F)
+async fn run_remote<F>(app: AppHandle, operation: F) -> String
 where
     F: FnOnce() -> Result<String, String> + Send + 'static,
 {
     match tauri::async_runtime::spawn_blocking(operation).await {
-        Ok(Ok(_)) => {}
+        Ok(Ok(output)) => output,
         Ok(Err(e)) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
+            format!("error: {}", e)
         }
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
+            format!("error: {}", e)
         }
     }
 }

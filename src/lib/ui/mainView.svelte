@@ -179,7 +179,7 @@ ${currentProject}
     class="h-100"
     style="display: {view == 'git'
       ? 'block'
-      : 'none'}; width: -webkit-fill-available;"
+      : 'none'}; width: calc(100% - 190px);"
   >
     <GitView {currentProject} />
   </div>

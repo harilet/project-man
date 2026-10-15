@@ -25,6 +25,10 @@
   let showHistory = false;
   let busy = false;
   let lastProject = "";
+  let statusMessage = "";
+
+  $: localBranches = branches.filter((branch) => !branch.is_remote);
+  $: remoteBranches = branches.filter((branch) => branch.is_remote);
 
   let branchDialog: HTMLDialogElement;
   let branchDialogMode: "create" | "rename" = "create";
@@ -146,10 +150,18 @@
   function switchBranch(e: any) {
     const name = e.target.value;
     if (!name || name === currentBranch) return;
-    invoke("checkout_branch", { location: currentProject, name }).then(() => {
-      fileDiff = "";
-      loadAll();
-    });
+
+    const isRemote = remoteBranches.some((branch) => branch.name === name);
+    const command = isRemote ? "checkout_remote_branch" : "checkout_branch";
+
+    busy = true;
+    invoke(command, { location: currentProject, name })
+      .then((output: any) => {
+        statusMessage = output || (isRemote ? `Checked out ${name}` : "");
+        fileDiff = "";
+        loadAll();
+      })
+      .finally(() => (busy = false));
   }
 
   function openCreateDialog() {
@@ -212,6 +224,7 @@
 
   function remoteAction(action: "fetch" | "pull" | "push") {
     busy = true;
+    statusMessage = "";
     const command =
       action === "fetch"
         ? "fetch_repo"
@@ -224,12 +237,16 @@
       args.branch = currentBranch;
     }
 
-    invoke(command, args).finally(() => {
-      busy = false;
-      if (action !== "fetch") {
-        loadAll();
-      }
-    });
+    invoke(command, args)
+      .then((output: any) => {
+        statusMessage = output || `${action} complete`;
+        loadBranches();
+        if (action !== "fetch") {
+          loadChanges();
+          loadLog();
+        }
+      })
+      .finally(() => (busy = false));
   }
 
   function printFileChangeLine(line: string) {
@@ -289,11 +306,20 @@
         on:change={switchBranch}
         disabled={busy}
       >
-        {#each branches as branch}
-          <option value={branch.name}
-            >{branch.name}{branch.is_head ? " *" : ""}</option
-          >
-        {/each}
+        <optgroup label="Local">
+          {#each localBranches as branch}
+            <option value={branch.name}
+              >{branch.name}{branch.is_head ? " *" : ""}</option
+            >
+          {/each}
+        </optgroup>
+        {#if remoteBranches.length > 0}
+          <optgroup label="Remote">
+            {#each remoteBranches as branch}
+              <option value={branch.name}>{branch.name}</option>
+            {/each}
+          </optgroup>
+        {/if}
       </select>
       <button class="btn btn-ghost" on:click={openCreateDialog}>+ New</button>
       <button class="btn btn-ghost" on:click={openRenameDialog}>Rename</button>
@@ -322,6 +348,13 @@
       >
     </div>
   </div>
+
+  {#if busy || statusMessage}
+    <div class="git-status label flex flex-align-center bottom-border">
+      {#if busy}<span class="status-busy">Working&hellip;</span>{/if}
+      {#if statusMessage}<span class="status-text">{statusMessage}</span>{/if}
+    </div>
+  {/if}
 
   <div class="flex git-main w-100">
     <div class="files-col flex flex-column right-border h-100">
@@ -419,7 +452,9 @@
     <div class="history flex flex-column top-border">
       <div class="panel-head flex flex-justify-between flex-align-center">
         <span class="label">History</span>
-        <span class="label">{commitLog.length} commits</span>
+        <span class="flex flex-align-center history-head-right">
+          <span class="label">{commitLog.length} commits</span>
+        </span>
       </div>
       <div class="main-scrollbar history-list">
         {#each commitLog as commitEntry}
@@ -513,6 +548,52 @@
     flex: 0 0 auto;
   }
 
+  .git-status {
+    padding: 6px 14px;
+    gap: 10px;
+    background: var(--background-color);
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+
+  .status-busy {
+    color: var(--primary-color);
+  }
+
+  .status-text {
+    color: var(--muted-color);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .history-head-right {
+    gap: 12px;
+  }
+
+  .history-close {
+    border: none;
+    background: transparent;
+    color: var(--muted-color);
+    display: flex;
+    align-items: center;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .history-close:hover {
+    color: var(--text-color);
+  }
+
+  .history-close :global(svg) {
+    height: 13px;
+    width: 13px;
+    fill: currentColor;
+  }
+
   .toolbar-group {
     gap: 6px;
   }
@@ -538,6 +619,11 @@
   .branch-select option {
     background: var(--surface-color);
     color: var(--text-color);
+  }
+
+  .branch-select optgroup {
+    background: var(--surface-color);
+    color: var(--muted-color);
   }
 
   .branch-select:focus {
