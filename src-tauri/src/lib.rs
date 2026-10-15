@@ -38,6 +38,18 @@ pub fn run() {
             get_unstaged_file_diff,
             add_file_index,
             remove_file_index,
+            commit,
+            amend_commit,
+            get_branches,
+            create_branch,
+            checkout_branch,
+            rename_branch,
+            delete_branch,
+            get_commit_log,
+            discard_file_changes,
+            fetch_repo,
+            push_repo,
+            pull_repo,
             send_message,
             get_saved_messages,
             add_saved_messages,
@@ -206,6 +218,142 @@ async fn add_file_index(app: AppHandle, location: String, path: String) {
 #[tauri::command]
 async fn remove_file_index(app: AppHandle, location: String, path: String) {
     match utils::git::remove_file_index(location, path) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn commit(app: AppHandle, location: String, message: String) -> String {
+    match utils::git::commit(location, message) {
+        Ok(oid) => oid,
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+fn amend_commit(app: AppHandle, location: String, message: String) -> String {
+    match utils::git::amend_commit(location, message) {
+        Ok(oid) => oid,
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            "".to_string()
+        }
+    }
+}
+
+#[tauri::command]
+fn get_branches(app: AppHandle, location: String) -> Vec<utils::git::BranchInfo> {
+    match utils::git::get_branches(location) {
+        Ok(branches) => branches,
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            vec![]
+        }
+    }
+}
+
+#[tauri::command]
+fn create_branch(app: AppHandle, location: String, name: String, checkout: bool) {
+    match utils::git::create_branch(location, name, checkout) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn checkout_branch(app: AppHandle, location: String, name: String) {
+    match utils::git::checkout_branch(location, name) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn rename_branch(app: AppHandle, location: String, old_name: String, new_name: String) {
+    match utils::git::rename_branch(location, old_name, new_name) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn delete_branch(app: AppHandle, location: String, name: String) {
+    match utils::git::delete_branch(location, name) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn get_commit_log(app: AppHandle, location: String, limit: usize) -> Vec<utils::git::CommitInfo> {
+    match utils::git::get_commit_log(location, limit) {
+        Ok(commits) => commits,
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+            vec![]
+        }
+    }
+}
+
+#[tauri::command]
+fn discard_file_changes(app: AppHandle, location: String, path: String) {
+    match utils::git::discard_file_changes(location, path) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn fetch_repo(app: AppHandle, location: String, remote: String) {
+    match utils::git::fetch(location, remote) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn push_repo(app: AppHandle, location: String, remote: String, branch: String) {
+    match utils::git::push(location, remote, branch) {
+        Ok(_) => {}
+        Err(e) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
+    }
+}
+
+#[tauri::command]
+fn pull_repo(app: AppHandle, location: String, remote: String, branch: String) {
+    match utils::git::pull(location, remote, branch) {
         Ok(_) => {}
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();

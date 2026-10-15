@@ -4,16 +4,9 @@
   import { onMount } from "svelte";
   import LlmSetting from "./llmSetting.svelte";
   import ChatItem from "./chatItem.svelte";
-  import Add from "$lib/icons/add.svelte";
-  import Close from "$lib/icons/close.svelte";
   import SavedMessages from "./savedMessages.svelte";
+  import GitView from "./gitView.svelte";
   import { listen } from "@tauri-apps/api/event";
-
-  let stagedFiles: any[] = [];
-
-  let unStagedFiles: any[] = [];
-
-  let fileDiff = "";
 
   let selectedModel = "";
 
@@ -30,22 +23,6 @@
 
   let serverLive = false;
   let error: any[] = [];
-
-  $: {
-    if (currentProject != "add" && currentProject != "") {
-      invoke("get_staged_files", {
-        location: currentProject,
-      }).then(function (data: any) {
-        stagedFiles = data;
-      });
-
-      invoke("get_unstaged_files", {
-        location: currentProject,
-      }).then(function (data: any) {
-        unStagedFiles = data;
-      });
-    }
-  }
 
   onMount(() => {
     llmSettingDialog.addEventListener("click", function (event) {
@@ -97,25 +74,6 @@
     });
   });
 
-  function getChanges(file: string) {
-    invoke("get_file_diff", {
-      location: currentProject,
-      file: file,
-      isUnified: false,
-    }).then(function (data: any) {
-      fileDiff = data;
-    });
-  }
-
-  function getUnstagedChanges(file: string) {
-    invoke("get_unstaged_file_diff", {
-      location: currentProject,
-      file: file,
-    }).then(function (data: any) {
-      fileDiff = data;
-    });
-  }
-
   async function sendMessage() {
     if (userInput != "") {
       let message: any;
@@ -160,46 +118,6 @@ ${currentProject}
     }
   }
 
-  function printFileChangeLine(line: string) {
-    if (line != "") {
-      let obj = JSON.parse(line);
-      if (obj["from_no"] == obj["to_no"]) {
-        return (
-          obj["change_type"] + ": " + obj["from_no"] + ": " + obj["content"]
-        );
-      } else if (obj["from_no"] == "") {
-        return obj["change_type"] + ": " + obj["to_no"] + ": " + obj["content"];
-      } else if (obj["to_no"] == "") {
-        return (
-          obj["change_type"] + ": " + obj["from_no"] + ": " + obj["content"]
-        );
-      } else {
-        return (
-          obj["change_type"] +
-          ": " +
-          obj["from_no"] +
-          "->" +
-          obj["to_no"] +
-          ": " +
-          obj["content"]
-        );
-      }
-    }
-  }
-
-  function getChangeLineColor(line: string) {
-    if (line != "") {
-      let obj = JSON.parse(line);
-      if (obj["change_type"] == "+") {
-        return "#00be7e4d";
-      } else if (obj["change_type"] == "-") {
-        return "#ff1d5733";
-      } else {
-        return "";
-      }
-    }
-  }
-
   function openSettingDialog() {
     if (llmSettingDialog.open) {
       llmSettingDialog.close();
@@ -218,40 +136,6 @@ ${currentProject}
 
   function changeView(viewChange: string) {
     view = viewChange;
-  }
-
-  function addFile(e: any, path: string) {
-    e.stopPropagation();
-    invoke("add_file_index", {
-      location: currentProject,
-      path: path,
-    }).then(function () {
-      getChangeFiles();
-    });
-  }
-
-  function removeFileFromIndex(e: any, path: string) {
-    e.stopPropagation();
-    invoke("remove_file_index", {
-      location: currentProject,
-      path: path,
-    }).then(function () {
-      getChangeFiles();
-    });
-  }
-
-  function getChangeFiles() {
-    invoke("get_staged_files", {
-      location: currentProject,
-    }).then(function (data: any) {
-      stagedFiles = data;
-    });
-
-    invoke("get_unstaged_files", {
-      location: currentProject,
-    }).then(function (data: any) {
-      unStagedFiles = data;
-    });
   }
 
   function openSavedMessages() {
@@ -297,77 +181,7 @@ ${currentProject}
       ? 'block'
       : 'none'}; width: -webkit-fill-available;"
   >
-    <div class="h-100 flex">
-      <div class="w-50 h-100 flex flex-column">
-        <div class="panel-head flex flex-justify-between">
-          <span class="label">Staged</span>
-          <span class="label">{stagedFiles.length}</span>
-        </div>
-        <div class="main-scrollbar right-border" style="flex: 1; min-height: 0;">
-          {#each stagedFiles as file}
-            <button
-              on:click={(_) => getChanges(file)}
-              class="commit-file-path hover"
-            >
-              <div class="file-name">
-                {file}
-              </div>
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div
-                class="file-action"
-                on:click={function (e) {
-                  removeFileFromIndex(e, file);
-                }}
-              >
-                <Close />
-              </div>
-            </button>
-          {/each}
-        </div>
-        <div class="panel-head flex flex-justify-between top-border">
-          <span class="label">Unstaged</span>
-          <span class="label">{unStagedFiles.length}</span>
-        </div>
-        <div class="main-scrollbar right-border" style="flex: 1; min-height: 0;">
-          {#each unStagedFiles as file}
-            <button
-              on:click={(_) => getUnstagedChanges(file)}
-              class="commit-file-path hover"
-            >
-              <div class="file-name">
-                {file}
-              </div>
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div
-                class="file-action"
-                on:click={function (e) {
-                  addFile(e, file);
-                }}
-              >
-                <Add />
-              </div>
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div class="w-50 h-100 right-border bottom-border flex flex-column">
-        <div class="panel-head flex flex-justify-between">
-          <span class="label">Diff</span>
-          <span class="label">Changes</span>
-        </div>
-        <div class="main-scrollbar" style="flex: 1; min-height: 0;">
-          {#each fileDiff.split("\n") as line}
-            <pre
-              style="background-color: {getChangeLineColor(line)};"
-              class="hover m-0 text-wrap-wrap diff-line">{printFileChangeLine(
-                  line,
-                )}</pre>
-          {/each}
-        </div>
-      </div>
-    </div>
+    <GitView {currentProject} />
   </div>
   <div
     class="h-100"
@@ -480,58 +294,6 @@ ${currentProject}
     color: var(--text-color);
     border-left-color: var(--primary-color);
     background: var(--hover-color);
-  }
-
-  .panel-head {
-    padding: 11px 14px;
-    background: var(--surface-color);
-  }
-
-  .commit-file-path {
-    padding: 9px 14px;
-    cursor: pointer;
-    border-radius: 0px;
-    background: transparent;
-    color: var(--text-color);
-    border: none;
-    border-bottom: 1px solid var(--border-color);
-    width: -webkit-fill-available;
-    text-align: start;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.15s ease;
-  }
-
-  .file-name {
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    direction: rtl;
-    text-align: left;
-  }
-
-  .file-action {
-    flex-shrink: 0;
-    color: var(--muted-color);
-    display: flex;
-    align-items: center;
-  }
-
-  .file-action:hover {
-    color: var(--primary-color);
-  }
-
-  .file-action :global(svg) {
-    height: 15px;
-    width: 15px;
-  }
-
-  .diff-line {
-    font-size: 12px;
-    padding: 0 14px;
   }
 
   .chat-response {

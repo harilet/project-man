@@ -9,6 +9,22 @@ struct ChangeLine {
     change_type: String,
 }
 
+#[derive(Clone, serde::Serialize, Debug)]
+pub struct BranchInfo {
+    pub name: String,
+    pub is_head: bool,
+    pub is_remote: bool,
+}
+
+#[derive(Clone, serde::Serialize, Debug)]
+pub struct CommitInfo {
+    pub id: String,
+    pub short_id: String,
+    pub summary: String,
+    pub author: String,
+    pub time: i64,
+}
+
 pub(crate) fn get_current_branch_name(location: String) -> Result<String, Box<dyn Error>> {
     let repo = get_repo(location)?;
 
@@ -53,6 +69,7 @@ pub(crate) fn get_unstaged_files(location: String) -> Result<Vec<String>, Box<dy
         .minimal(true)
         .include_ignored(false)
         .include_untracked(true)
+        .recurse_untracked_dirs(true)
         .ignore_whitespace_eol(false);
     let unstaged_diff = repo.diff_index_to_workdir(Some(&repo.index()?), Some(&mut diff_opts))?;
     for diff in unstaged_diff.deltas() {
@@ -126,7 +143,9 @@ pub(crate) fn get_unstaged_file_diff(
         .patience(false)
         .minimal(false)
         .include_ignored(false)
-        .include_untracked(false)
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .show_untracked_content(true)
         .ignore_whitespace_eol(false)
         .pathspec(path.clone());
 
@@ -239,4 +258,264 @@ pub(crate) fn get_all_staged_diff(location: String) -> Result<String, Box<dyn Er
     })?;
 
     Ok(diff_data.join("\n"))
+}
+
+fn get_signature(repo: &Repository) -> Result<git2::Signature<'static>, Box<dyn Error>> {
+    match repo.signature() {
+        Ok(sig) => Ok(sig.to_owned()),
+        Err(_) => Ok(git2::Signature::now("project-man", "project-man@localhost")?),
+    }
+}
+
+pub(crate) fn commit(location: String, message: String) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+
+    let mut index = repo.index()?;
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+
+    let sig = get_signature(&repo)?;
+
+    let parent = match repo.head() {
+        Ok(head) => Some(head.peel_to_commit()?),
+        Err(_) => None,
+    };
+    let parents: Vec<&git2::Commit> = parent.iter().collect();
+
+    let oid = repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)?;
+    Ok(oid.to_string())
+}
+
+pub(crate) fn amend_commit(location: String, message: String) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+
+    let mut index = repo.index()?;
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+
+    let sig = get_signature(&repo)?;
+
+    let head_commit = repo.head()?.peel_to_commit()?;
+    let message = if message.trim().is_empty() {
+        head_commit.message().unwrap_or("").to_string()
+    } else {
+        message
+    };
+
+    let oid = head_commit.amend(
+        Some("HEAD"),
+        Some(&sig),
+        Some(&sig),
+        None,
+        Some(&message),
+        Some(&tree),
+    )?;
+    Ok(oid.to_string())
+}
+
+pub(crate) fn get_branches(location: String) -> Result<Vec<BranchInfo>, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let head_name = current_branch_name(&repo);
+
+    let mut branches: Vec<BranchInfo> = vec![];
+    for item in repo.branches(Some(git2::BranchType::Local))? {
+        let (branch, _) = item?;
+        let name = match branch.name()? {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+        branches.push(BranchInfo {
+            is_head: Some(name.clone()) == head_name,
+            is_remote: false,
+            name,
+        });
+    }
+
+    branches.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(branches)
+}
+
+fn current_branch_name(repo: &Repository) -> Option<String> {
+    repo.head().ok().and_then(|head| {
+        if head.is_branch() {
+            head.shorthand().map(|name| name.to_string())
+        } else {
+            None
+        }
+    })
+}
+
+pub(crate) fn create_branch(
+    location: String,
+    name: String,
+    checkout: bool,
+) -> Result<(), Box<dyn Error>> {
+    let repo = get_repo(location.clone())?;
+    {
+        let head = repo.head()?;
+        let commit = head.peel_to_commit()?;
+        repo.branch(&name, &commit, false)?;
+    }
+    drop(repo);
+
+    if checkout {
+        checkout_branch(location, name)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn checkout_branch(location: String, name: String) -> Result<(), Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let (object, reference) = repo.revparse_ext(&name)?;
+
+    repo.checkout_tree(&object, None)?;
+    match reference {
+        Some(reference) => {
+            let ref_name = reference
+                .name()
+                .ok_or("Reference has an invalid name")?
+                .to_string();
+            repo.set_head(&ref_name)?;
+        }
+        None => repo.set_head_detached(object.id())?,
+    }
+    Ok(())
+}
+
+pub(crate) fn rename_branch(
+    location: String,
+    old_name: String,
+    new_name: String,
+) -> Result<(), Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let mut branch = repo.find_branch(&old_name, git2::BranchType::Local)?;
+    branch.rename(&new_name, false)?;
+    Ok(())
+}
+
+pub(crate) fn delete_branch(location: String, name: String) -> Result<(), Box<dyn Error>> {
+    let repo = get_repo(location)?;
+
+    if current_branch_name(&repo) == Some(name.clone()) {
+        return Err("Cannot delete the branch you are currently on".into());
+    }
+
+    let mut branch = repo.find_branch(&name, git2::BranchType::Local)?;
+    branch.delete()?;
+    Ok(())
+}
+
+pub(crate) fn get_commit_log(
+    location: String,
+    limit: usize,
+) -> Result<Vec<CommitInfo>, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+
+    let mut revwalk = repo.revwalk()?;
+    if revwalk.push_head().is_err() {
+        return Ok(vec![]);
+    }
+
+    let mut commits: Vec<CommitInfo> = vec![];
+    for (index, oid) in revwalk.enumerate() {
+        if index >= limit {
+            break;
+        }
+        let oid = match oid {
+            Ok(oid) => oid,
+            Err(_) => continue,
+        };
+        let commit = match repo.find_commit(oid) {
+            Ok(commit) => commit,
+            Err(_) => continue,
+        };
+        let id = oid.to_string();
+        commits.push(CommitInfo {
+            short_id: id.chars().take(7).collect(),
+            id,
+            summary: commit.summary().unwrap_or("").to_string(),
+            author: commit.author().name().unwrap_or("").to_string(),
+            time: commit.time().seconds(),
+        });
+    }
+
+    Ok(commits)
+}
+
+pub(crate) fn discard_file_changes(location: String, path: String) -> Result<(), Box<dyn Error>> {
+    let repo = get_repo(location)?;
+
+    let mut checkout_builder = git2::build::CheckoutBuilder::new();
+    checkout_builder.path(&path).force();
+    repo.checkout_head(Some(&mut checkout_builder))?;
+    Ok(())
+}
+
+fn remote_callbacks() -> git2::RemoteCallbacks<'static> {
+    let mut callbacks = git2::RemoteCallbacks::new();
+    callbacks.credentials(|_url, username_from_url, _allowed_types| match username_from_url {
+        Some(username) => git2::Cred::ssh_key_from_agent(username),
+        None => git2::Cred::default(),
+    });
+    callbacks
+}
+
+pub(crate) fn fetch(location: String, remote: String) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let mut remote = repo.find_remote(&remote)?;
+
+    let mut fetch_options = git2::FetchOptions::new();
+    fetch_options.remote_callbacks(remote_callbacks());
+
+    remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)?;
+    Ok(format!("Fetched from {}", remote.name().unwrap_or("remote")))
+}
+
+pub(crate) fn push(
+    location: String,
+    remote: String,
+    branch: String,
+) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let mut git_remote = repo.find_remote(&remote)?;
+
+    let mut push_options = git2::PushOptions::new();
+    push_options.remote_callbacks(remote_callbacks());
+
+    let refspec = format!("refs/heads/{0}:refs/heads/{0}", branch);
+    git_remote.push(&[refspec.as_str()], Some(&mut push_options))?;
+    Ok(format!("Pushed {} to {}", branch, remote))
+}
+
+pub(crate) fn pull(
+    location: String,
+    remote: String,
+    branch: String,
+) -> Result<String, Box<dyn Error>> {
+    let repo = get_repo(location)?;
+    let mut git_remote = repo.find_remote(&remote)?;
+
+    let mut fetch_options = git2::FetchOptions::new();
+    fetch_options.remote_callbacks(remote_callbacks());
+    git_remote.fetch(&[branch.as_str()], Some(&mut fetch_options), None)?;
+
+    let fetch_head = repo.find_reference("FETCH_HEAD")?;
+    let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
+    let (analysis, _) = repo.merge_analysis(&[&fetch_commit])?;
+
+    if analysis.is_up_to_date() {
+        return Ok("Already up to date".to_string());
+    }
+
+    if !analysis.is_fast_forward() {
+        return Err("Pull would require a merge; resolve it manually".into());
+    }
+
+    let refname = format!("refs/heads/{}", branch);
+    let mut reference = repo.find_reference(&refname)?;
+    reference.set_target(fetch_commit.id(), "Fast-forward")?;
+    repo.set_head(&refname)?;
+    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+
+    Ok(format!("Fast-forwarded {}", branch))
 }
