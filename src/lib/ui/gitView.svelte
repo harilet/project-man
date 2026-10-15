@@ -518,16 +518,26 @@
   }
 
   .branch-select {
-    background: var(--background-color);
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--background-color);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%23888888'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
     border: 1px solid var(--border-strong);
     color: var(--text-color);
     font-family: inherit;
     font-size: 12px;
-    padding: 7px 10px;
+    padding: 7px 28px 7px 10px;
     min-width: 160px;
     max-width: 240px;
     cursor: pointer;
     outline: none;
+  }
+
+  .branch-select option {
+    background: var(--surface-color);
+    color: var(--text-color);
   }
 
   .branch-select:focus {
