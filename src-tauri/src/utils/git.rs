@@ -451,24 +451,27 @@ pub(crate) fn discard_file_changes(location: String, path: String) -> Result<(),
     Ok(())
 }
 
-fn remote_callbacks() -> git2::RemoteCallbacks<'static> {
-    let mut callbacks = git2::RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, _allowed_types| match username_from_url {
-        Some(username) => git2::Cred::ssh_key_from_agent(username),
-        None => git2::Cred::default(),
-    });
-    callbacks
+fn run_git(location: &str, args: &[&str]) -> Result<String, Box<dyn Error>> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(location)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+    if output.status.success() {
+        Ok(if stdout.is_empty() { stderr } else { stdout })
+    } else {
+        let message = if stderr.is_empty() { stdout } else { stderr };
+        Err(message.into())
+    }
 }
 
 pub(crate) fn fetch(location: String, remote: String) -> Result<String, Box<dyn Error>> {
-    let repo = get_repo(location)?;
-    let mut remote = repo.find_remote(&remote)?;
-
-    let mut fetch_options = git2::FetchOptions::new();
-    fetch_options.remote_callbacks(remote_callbacks());
-
-    remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)?;
-    Ok(format!("Fetched from {}", remote.name().unwrap_or("remote")))
+    run_git(&location, &["fetch", "--prune", &remote])
 }
 
 pub(crate) fn push(
@@ -476,15 +479,7 @@ pub(crate) fn push(
     remote: String,
     branch: String,
 ) -> Result<String, Box<dyn Error>> {
-    let repo = get_repo(location)?;
-    let mut git_remote = repo.find_remote(&remote)?;
-
-    let mut push_options = git2::PushOptions::new();
-    push_options.remote_callbacks(remote_callbacks());
-
-    let refspec = format!("refs/heads/{0}:refs/heads/{0}", branch);
-    git_remote.push(&[refspec.as_str()], Some(&mut push_options))?;
-    Ok(format!("Pushed {} to {}", branch, remote))
+    run_git(&location, &["push", "--set-upstream", &remote, &branch])
 }
 
 pub(crate) fn pull(
@@ -492,30 +487,5 @@ pub(crate) fn pull(
     remote: String,
     branch: String,
 ) -> Result<String, Box<dyn Error>> {
-    let repo = get_repo(location)?;
-    let mut git_remote = repo.find_remote(&remote)?;
-
-    let mut fetch_options = git2::FetchOptions::new();
-    fetch_options.remote_callbacks(remote_callbacks());
-    git_remote.fetch(&[branch.as_str()], Some(&mut fetch_options), None)?;
-
-    let fetch_head = repo.find_reference("FETCH_HEAD")?;
-    let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
-    let (analysis, _) = repo.merge_analysis(&[&fetch_commit])?;
-
-    if analysis.is_up_to_date() {
-        return Ok("Already up to date".to_string());
-    }
-
-    if !analysis.is_fast_forward() {
-        return Err("Pull would require a merge; resolve it manually".into());
-    }
-
-    let refname = format!("refs/heads/{}", branch);
-    let mut reference = repo.find_reference(&refname)?;
-    reference.set_target(fetch_commit.id(), "Fast-forward")?;
-    repo.set_head(&refname)?;
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
-
-    Ok(format!("Fast-forwarded {}", branch))
+    run_git(&location, &["pull", "--ff-only", &remote, &branch])
 }

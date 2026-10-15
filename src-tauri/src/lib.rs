@@ -330,31 +330,39 @@ fn discard_file_changes(app: AppHandle, location: String, path: String) {
 }
 
 #[tauri::command]
-fn fetch_repo(app: AppHandle, location: String, remote: String) {
-    match utils::git::fetch(location, remote) {
-        Ok(_) => {}
-        Err(e) => {
-            app.emit("app-error", e.to_string()).unwrap();
-            println!("{:#?}", e);
-        }
-    }
+async fn fetch_repo(app: AppHandle, location: String, remote: String) {
+    run_remote(app, move || {
+        utils::git::fetch(location, remote).map_err(|e| e.to_string())
+    })
+    .await;
 }
 
 #[tauri::command]
-fn push_repo(app: AppHandle, location: String, remote: String, branch: String) {
-    match utils::git::push(location, remote, branch) {
-        Ok(_) => {}
-        Err(e) => {
-            app.emit("app-error", e.to_string()).unwrap();
-            println!("{:#?}", e);
-        }
-    }
+async fn push_repo(app: AppHandle, location: String, remote: String, branch: String) {
+    run_remote(app, move || {
+        utils::git::push(location, remote, branch).map_err(|e| e.to_string())
+    })
+    .await;
 }
 
 #[tauri::command]
-fn pull_repo(app: AppHandle, location: String, remote: String, branch: String) {
-    match utils::git::pull(location, remote, branch) {
-        Ok(_) => {}
+async fn pull_repo(app: AppHandle, location: String, remote: String, branch: String) {
+    run_remote(app, move || {
+        utils::git::pull(location, remote, branch).map_err(|e| e.to_string())
+    })
+    .await;
+}
+
+async fn run_remote<F>(app: AppHandle, operation: F)
+where
+    F: FnOnce() -> Result<String, String> + Send + 'static,
+{
+    match tauri::async_runtime::spawn_blocking(operation).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            app.emit("app-error", e.to_string()).unwrap();
+            println!("{:#?}", e);
+        }
         Err(e) => {
             app.emit("app-error", e.to_string()).unwrap();
             println!("{:#?}", e);
